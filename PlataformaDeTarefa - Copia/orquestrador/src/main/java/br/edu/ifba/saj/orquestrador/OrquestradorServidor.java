@@ -6,10 +6,8 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -68,6 +66,55 @@ public class OrquestradorServidor {
         }
         public static String validarToken(String token) {
             return sessoesAtivas.get(token);
+        }
+    }
+
+    public static class MonitoramentoImpl extends MonitoramentoGrpc.MonitoramentoImplBase {
+        private static final List<StreamObserver<EstadoGeral>> monitorObservers = Collections.synchronizedList(new ArrayList<>());
+
+        @Override
+        public void inscreverParaEstadoGeral(com.google.protobuf.Empty request, StreamObserver<EstadoGeral> responseObserver) {
+            System.out.println("Novo monitor conectado ao sistema.");
+            monitorObservers.add(responseObserver);
+        }
+
+        public static void enviarAtualizacaoGeral() {
+            if (monitorObservers.isEmpty()) return;
+
+            EstadoGeral.Builder estadoBuilder = EstadoGeral.newBuilder();
+
+            workersAtivos.forEach((id, timestamp) -> {
+                long tarefasNoWorker = bancoDeTarefas.values().stream()
+                        .filter(t -> id.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.EXECUTANDO)
+                        .count();
+
+                estadoBuilder.addWorkers(WorkerInfo.newBuilder()
+                        .setWorkerId(id)
+                        .setStatus("ATIVO")
+                        .setTarefasExecutando((int) tarefasNoWorker)
+                        .build());
+            });
+
+            bancoDeTarefas.values().forEach(tarefa -> {
+                estadoBuilder.addTarefas(TarefaInfo.newBuilder()
+                        .setId(tarefa.getId())
+                        .setDescricao(tarefa.getDados())
+                        .setStatus(tarefa.getStatus().toString())
+                        .setWorkerId(tarefa.getWorkerIdAtual() != null ? tarefa.getWorkerIdAtual() : "N/A")
+                        .build());
+            });
+
+            estadoBuilder.setOrquestradorAtivoId("Principal (localhost:50050)");
+
+            EstadoGeral estado = estadoBuilder.build();
+
+            new ArrayList<>(monitorObservers).forEach(observer -> {
+                try {
+                    observer.onNext(estado);
+                } catch (Exception e) {
+                    monitorObservers.remove(observer);
+                }
+            });
         }
     }
 

@@ -1,3 +1,5 @@
+import "google/protobuf/empty.proto";
+
 syntax = "proto3";
 
 option java_multiple_files = true;
@@ -20,6 +22,24 @@ service GerenciadorTarefas {
   rpc FinalizarTarefa(FinalizarTarefaRequest) returns (FinalizarTarefaResponse) {}
   rpc ConsultarStatusTarefas(ConsultarStatusRequest) returns (ConsultarStatusResponse) {}
   rpc InscreverParaAtualizacoes(InscricaoRequest) returns (stream TarefaInfo) {}
+}
+
+service Monitoramento {
+  // O monitor se inscreve para receber um fluxo de atualizações do estado geral do sistema
+  rpc InscreverParaEstadoGeral(google.protobuf.Empty) returns (stream EstadoGeral) {}
+}
+
+// --- MENSAGENS DE MONITORAMENTO ---
+message WorkerInfo {
+  string worker_id = 1;
+  string status = 2; // Ex: "ATIVO", "INATIVO"
+  int32 tarefas_executando = 3;
+}
+
+message EstadoGeral {
+  repeated WorkerInfo workers = 1;
+  repeated TarefaInfo tarefas = 2;
+  string orquestrador_ativo = 3; // ID do orquestrador principal
 }
 
 // --- MENSAGENS DE AUTENTICAÇÃO ---

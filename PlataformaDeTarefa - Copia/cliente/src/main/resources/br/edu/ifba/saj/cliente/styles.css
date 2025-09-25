@@ -1,0 +1,194 @@
+/* Estilos Gerais para o Card */
+.card-background {
+    -fx-background-color: #ffffff; /* Fundo branco para o card */
+    -fx-background-radius: 10px; /* Cantos arredondados */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5); /* Sombra suave */
+    -fx-padding: 20px;
+}
+
+/* Estilo para a tela de login/registro (fundo verde da Imagem 2) */
+.login-background {
+    -fx-background-color: #38b19e; /* Cor de fundo verde/azul da Imagem 2 */
+}
+
+/* Título do formulário (Login Form) */
+.form-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+    -fx-padding: 0 0 15px 0;
+}
+
+/* Campos de texto e senha (Email or Phone, Password) */
+.text-field, .password-field {
+    -fx-pref-height: 40px;
+    -fx-background-color: #f0f0f0;
+    -fx-background-radius: 5px;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 5px;
+    -fx-font-size: 14px;
+    -fx-padding: 0 10px;
+}
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #38b19e; /* Borda verde quando focado */
+    -fx-background-color: #e0f8f5; /* Fundo mais claro quando focado */
+}
+.text-field .text, .password-field .text {
+    -fx-fill: #333333;
+}
+
+/* Botões (Login) */
+.button-primary {
+    -fx-background-color: #38b19e; /* Fundo verde da Imagem 2 */
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 5px;
+    -fx-pref-height: 45px;
+}
+.button-primary:hover {
+    -fx-background-color: #309f8d; /* Escurece um pouco no hover */
+}
+
+/* Links (Forgot password?, Signup now) */
+.hyperlink {
+    -fx-text-fill: #666666;
+    -fx-font-size: 12px;
+}
+.hyperlink:hover {
+    -fx-text-fill: #38b19e;
+}
+
+/* Label de status/erro */
+.status-label {
+    -fx-text-fill: #e74c3c; /* Vermelho para erros */
+    -fx-font-size: 12px;
+    -fx-padding: 5px 0 0 0;
+}
+
+/* --- Estilos para o Dashboard (Imagem 1) --- */
+
+/* Fundo geral do dashboard */
+.dashboard-background {
+    -fx-background-color: #e6e6e6; /* Cor de fundo suave */
+}
+
+/* Painel Lateral (Menu) */
+.sidebar {
+    -fx-background-color: #364150; /* Cor azul escuro/cinza da Imagem 1 */
+    -fx-padding: 15px;
+}
+.sidebar .label {
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+.sidebar .button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-alignment: center-left;
+    -fx-pref-width: 200px;
+    -fx-padding: 10px 15px;
+}
+.sidebar .button:hover {
+    -fx-background-color: #4a5a6a;
+}
+.sidebar .button.active { /* Para o item de menu selecionado */
+    -fx-background-color: #007bff; /* Azul vibrante */
+}
+
+/* Área de conteúdo principal do dashboard */
+.content-area {
+    -fx-background-color: #fcfcfc; /* Fundo branco puro para o conteúdo */
+    -fx-padding: 20px;
+}
+
+/* Título do conteúdo (Minhas tarefas) */
+.content-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+}
+
+/* Campo de busca/filtragem */
+.search-field {
+    -fx-pref-height: 35px;
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 5px;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 5px;
+    -fx-font-size: 13px;
+    -fx-padding: 0 10px;
+}
+
+/* Botões de ação no dashboard (Filtrar, Nova Tarefa) */
+.button-dashboard-primary {
+    -fx-background-color: #007bff; /* Azul padrão */
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 5px;
+    -fx-pref-height: 35px;
+    -fx-padding: 0 15px;
+}
+.button-dashboard-primary:hover {
+    -fx-background-color: #0056b3;
+}
+.button-dashboard-secondary { /* Ex: Botão Nova Tarefa */
+    -fx-background-color: #28a745; /* Verde */
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 5px;
+    -fx-pref-height: 35px;
+    -fx-padding: 0 15px;
+}
+.button-dashboard-secondary:hover {
+    -fx-background-color: #218838;
+}
+
+/* Tabela */
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+}
+.table-view .column-header-background {
+    -fx-background-color: #343a40; /* Fundo escuro para cabeçalhos */
+    -fx-background-radius: 5px 5px 0 0;
+}
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+.table-row-cell {
+    -fx-background-color: white;
+    -fx-cell-size: 40px;
+}
+.table-row-cell:odd {
+    -fx-background-color: #f9f9f9; /* Linhas zebradas */
+}
+.table-row-cell:selected {
+    -fx-background-color: #cfe2ff; /* Fundo azul claro para linha selecionada */
+}
+.table-view .table-cell {
+    -fx-border-color: transparent;
+    -fx-padding: 5px 10px;
+    -fx-alignment: CENTER_LEFT; /* Alinha o texto das células à esquerda */
+}
+
+/* Botões de Ação na Tabela (Editar, Excluir, Concluir) */
+.table-action-button {
+    -fx-background-color: transparent;
+    -fx-padding: 5px;
+    -fx-cursor: hand;
+}
+.table-action-button .ikonli-font-icon { /* Se você usar Ikonli para ícones */
+    -fx-icon-color: #6c757d; /* Cor padrão dos ícones */
+    -fx-icon-size: 16px;
+}
+.table-action-button.edit .ikonli-font-icon { -fx-icon-color: #ffc107; }
+.table-action-button.delete .ikonli-font-icon { -fx-icon-color: #dc3545; }
+.table-action-button.complete .ikonli-font-icon { -fx-icon-color: #28a745; }

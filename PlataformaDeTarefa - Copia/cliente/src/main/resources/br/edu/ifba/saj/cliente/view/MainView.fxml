@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+
+<?import java.lang.String?>
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="700.0" prefWidth="1000.0" styleClass="dashboard-background" stylesheets="@../styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.edu.ifba.saj.cliente.controller.MainController">
+    <left>
+        <VBox prefWidth="240.0" styleClass="sidebar" BorderPane.alignment="CENTER">
+            <children>
+                <Label text="Gerenciador de Tarefas" textFill="WHITE">
+                    <font>
+                        <Font name="System Bold" size="18.0" />
+                    </font>
+                    <VBox.margin>
+                        <Insets bottom="20.0" />
+                    </VBox.margin>
+                </Label>
+                <Button alignment="CENTER_LEFT" mnemonicParsing="false" prefHeight="40.0" prefWidth="220.0" styleClass="button" text="Minhas tarefas" textFill="WHITE" />
+                <Button alignment="CENTER_LEFT" mnemonicParsing="false" prefHeight="40.0" prefWidth="220.0" styleClass="button" text="+ Cadastrar" textFill="WHITE">
+                    <VBox.margin>
+                        <Insets />
+                    </VBox.margin>
+                </Button>
+                <VBox VBox.vgrow="ALWAYS" />
+                <Label fx:id="usuarioLogadoLabel" text="Olá, Nome do Usuário" textFill="WHITE" />
+                <Button mnemonicParsing="false" onAction="#handleLogout" prefWidth="220.0" style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold;" text="Sair">
+                    <VBox.margin>
+                        <Insets top="10.0" />
+                    </VBox.margin>
+                </Button>
+            </children>
+            <padding>
+                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+            </padding>
+        </VBox>
+    </left>
+    <center>
+        <VBox spacing="15.0" styleClass="content-area" BorderPane.alignment="CENTER">
+            <children>
+                <Label styleClass="content-title" text="Minhas tarefas" />
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <children>
+                        <Button onAction="#handleNovaTarefa" styleClass="button-dashboard-secondary" text="+ Nova tarefa" />
+                        <TextField fx:id="filterField" prefHeight="35.0" prefWidth="250.0" promptText="Filtrar tarefas..." styleClass="search-field" />
+                        <MenuButton mnemonicParsing="false" prefHeight="35.0" style="-fx-background-color: #f0f0f0;" text="Prioridade">
+                            <items>
+                                <MenuItem mnemonicParsing="false" text="Baixa" />
+                                <MenuItem mnemonicParsing="false" text="Normal" />
+                                <MenuItem mnemonicParsing="false" text="Alta" />
+                            </items>
+                        </MenuButton>
+                        <Button onAction="#handleFilter" styleClass="button-dashboard-primary" text="Q Filtrar" />
+                    </children>
+                </HBox>
+                <TableView fx:id="tabelaTarefas" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="idCol" prefWidth="120.0" text="ID" />
+                        <TableColumn fx:id="tituloCol" prefWidth="180.0" text="Título" />
+                        <TableColumn fx:id="prioridadeCol" prefWidth="100.0" text="Prioridade" />
+                        <TableColumn fx:id="statusCol" prefWidth="100.0" text="Status" />
+                        <TableColumn fx:id="criadaEmCol" prefWidth="120.0" text="Criada em" />
+                        <TableColumn fx:id="terminadaEmCol" prefWidth="120.0" text="Terminada em" />
+                        <TableColumn fx:id="acoesCol" prefWidth="100.0" text="Ações" />
+                    </columns>
+                    <styleClass>
+                        <String fx:value="table-view" />
+                    </styleClass>
+                </TableView>
+            </children>
+        </VBox>
+    </center>
+    <padding>
+        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+    </padding>
+</BorderPane>

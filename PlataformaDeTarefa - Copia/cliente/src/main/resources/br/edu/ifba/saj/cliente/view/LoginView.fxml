@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+
+<?import java.lang.String?>
+<StackPane stylesheets="@../styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.edu.ifba.saj.cliente.controller.LoginController">
+    <children>
+        <VBox alignment="CENTER" maxWidth="350.0" prefHeight="350.0" prefWidth="350.0" spacing="15.0" styleClass="card-background">
+            <children>
+                <Text styleClass="form-title" text="Login Form" />
+                <TextField fx:id="usuarioField" prefHeight="40.0" promptText="Email or Phone" styleClass="text-field" />
+                <PasswordField fx:id="senhaField" prefHeight="40.0" promptText="Password" styleClass="password-field" />
+                <Hyperlink onAction="#handleForgotPassword" styleClass="hyperlink" text="Forgot password?" textFill="#666666" VBox.vgrow="NEVER">
+                    <VBox.margin>
+                        <Insets right="-140.0" />
+                    </VBox.margin>
+                </Hyperlink>
+                <Button onAction="#handleLogin" prefWidth="300.0" styleClass="button-primary" text="Login" />
+                <Label fx:id="statusLabel" styleClass="status-label" />
+                <VBox alignment="CENTER" spacing="5.0" VBox.vgrow="ALWAYS">
+                    <children>
+                        <Text text="Not a member?" />
+                        <Hyperlink onAction="#handleRegistro" styleClass="hyperlink" text="Signup now" textFill="#666666" />
+                    </children>
+                </VBox>
+            </children>
+            <padding>
+                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+            </padding>
+        </VBox>
+    </children>
+    <styleClass>
+        <String fx:value="login-background" />
+    </styleClass>
+</StackPane>

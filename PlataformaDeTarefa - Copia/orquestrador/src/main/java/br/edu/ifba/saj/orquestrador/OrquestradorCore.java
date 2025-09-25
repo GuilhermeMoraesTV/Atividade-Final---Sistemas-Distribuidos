@@ -18,16 +18,19 @@ public class OrquestradorCore {
     public static boolean tentarIniciarModoPrimario(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas, AtomicLong lamportClock) {
         System.out.println("ATIVANDO MODO PRIMÁRIO...");
         try {
-            OrquestradorServidor.GerenciadorTarefasImpl servico = new OrquestradorServidor.GerenciadorTarefasImpl(workersAtivos, bancoDeTarefas, lamportClock);
+            // Cria as instâncias dos serviços passando os mapas de estado
+            OrquestradorServidor.GerenciadorTarefasImpl servicoTarefas = new OrquestradorServidor.GerenciadorTarefasImpl(workersAtivos, bancoDeTarefas, lamportClock);
+            OrquestradorServidor.MonitoramentoImpl servicoMonitor = new OrquestradorServidor.MonitoramentoImpl(workersAtivos, bancoDeTarefas);
 
-            iniciarServidorGrpc(servico);
+            iniciarServidorGrpc(servicoTarefas, servicoMonitor);
             iniciarVerificadorDeSaude(workersAtivos, bancoDeTarefas, lamportClock);
             iniciarTransmissaoDeEstado(workersAtivos);
-            iniciarReagendadorDeTarefas(bancoDeTarefas, servico);
+            iniciarTransmissorDeMonitoramento(servicoMonitor); // Passa a instância do serviço
+            iniciarReagendadorDeTarefas(bancoDeTarefas, servicoTarefas);
 
             return true;
         } catch (IOException e) {
-            System.err.println("FALHA ao iniciar o servidor gRPC em modo primário: " + e.getMessage());
+            System.err.println("FALHA ao iniciar o servidor gRPC: " + e.getMessage());
             return false;
         }
     }
@@ -36,6 +39,7 @@ public class OrquestradorCore {
         Server server = ServerBuilder.forPort(GRPC_PORT)
                 .addService(servico)
                 .addService(new OrquestradorServidor.AutenticacaoImpl())
+                .addService(new OrquestradorServidor.MonitoramentoImpl())
                 .build();
         server.start();
 
@@ -47,6 +51,12 @@ public class OrquestradorCore {
                 Thread.currentThread().interrupt();
             }
         }).start();
+    }
+
+    private static void iniciarTransmissorDeMonitoramento() {
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        // Envia uma atualização completa do estado a cada 3 segundos
+        scheduler.scheduleAtFixedRate(OrquestradorServidor.MonitoramentoImpl::enviarAtualizacaoGeral, 3, 3, TimeUnit.SECONDS);
     }
 
     private static void iniciarVerificadorDeSaude(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas, AtomicLong lamportClock) {

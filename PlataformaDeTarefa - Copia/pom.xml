@@ -12,6 +12,7 @@
   <module>orquestrador</module>
   <module>worker</module>
   <module>cliente</module>
+  <module>monitor</module>
 </modules>
 
   <properties>
