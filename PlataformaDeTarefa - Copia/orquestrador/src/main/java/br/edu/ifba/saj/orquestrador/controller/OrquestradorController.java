@@ -4,6 +4,7 @@ import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
+import javafx.animation.ScaleTransition;
 
 import br.edu.ifba.saj.orquestrador.model.LogEntry;
 import br.edu.ifba.saj.orquestrador.model.TarefaModel;
@@ -20,6 +21,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.chart.PieChart;
 import javafx.concurrent.Task;
 import javafx.util.Duration;
+import javafx.scene.layout.HBox;
 
 
 public class OrquestradorController {
@@ -49,6 +51,8 @@ public class OrquestradorController {
 
     @FXML private PieChart graficoStatusTarefas;
     @FXML private ProgressBar syncProgressBar;
+    @FXML private HBox syncStatusBox;
+    @FXML private HBox healthCheckStatusBox;
 
     @FXML private ListView<LogEntry> logListView;
     @FXML private Button iniciarServidorBtn;
@@ -175,6 +179,9 @@ public class OrquestradorController {
         atualizadorThread.start();
     }
 
+    // ==================================================================
+    // MÉTODO CORRIGIDO PARA ATIVAR A ANIMAÇÃO DA BARRA
+    // ==================================================================
     @FXML
     private void iniciarServidor() {
         servidorTask = new Task<>() {
@@ -182,8 +189,14 @@ public class OrquestradorController {
             protected Void call() throws Exception {
                 try {
                     Platform.runLater(() -> adicionarLog("Iniciando servidor do orquestrador..."));
+
+                    orquestradorService.setSyncCallback(OrquestradorController.this::dispararAnimacaoSync);
+                    // CONECTAR O NOVO CALLBACK DE HEALTH CHECK
+                    orquestradorService.setHealthCheckCallback(OrquestradorController.this::dispararAnimacaoHealthCheck);
+
                     orquestradorService.setLogCallback(OrquestradorController.this::adicionarLog);
                     orquestradorService.iniciarServidor();
+
                     Platform.runLater(() -> {
                         adicionarLog("Servidor iniciado com sucesso na porta 50050!");
                         atualizarInterface();
@@ -203,24 +216,55 @@ public class OrquestradorController {
         thread.start();
     }
 
+    private void dispararAnimacaoHealthCheck() {
+        Platform.runLater(() -> {
+            // Animação para mostrar e esconder o HBox
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(100), healthCheckStatusBox);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
 
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(400), healthCheckStatusBox);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+            fadeOut.setDelay(Duration.millis(700)); // Pequeno delay antes de sumir
+
+            // Animação de pulso
+            ScaleTransition scale = new ScaleTransition(Duration.millis(300), healthCheckStatusBox);
+            scale.setFromX(1.0); scale.setFromY(1.0);
+            scale.setToX(1.05); scale.setToY(1.05);
+            scale.setCycleCount(2);
+            scale.setAutoReverse(true);
+
+            // Orquestra as animações
+            fadeIn.setOnFinished(e -> {
+                scale.play();
+                fadeOut.play();
+            });
+            fadeIn.play();
+        });
+    }
 
     private void dispararAnimacaoSync() {
         Platform.runLater(() -> {
-            // Animação de preenchimento
+            // Animação de preenchimento da barra
             Timeline timeline = new Timeline(
-                    new KeyFrame(Duration.ZERO, new KeyValue(syncProgressBar.progressProperty(), 0), new KeyValue(syncProgressBar.opacityProperty(), 1)),
+                    new KeyFrame(Duration.ZERO, new KeyValue(syncProgressBar.progressProperty(), 0)),
                     new KeyFrame(Duration.seconds(0.5), new KeyValue(syncProgressBar.progressProperty(), 1))
             );
 
-            // Animação de fade out (desaparecer)
-            FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.5), syncProgressBar);
+            // Animação para mostrar e esconder o HBox (label + barra)
+            FadeTransition fadeIn = new FadeTransition(Duration.seconds(0.2), syncStatusBox);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
+
+            FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.5), syncStatusBox);
             fadeOut.setFromValue(1.0);
             fadeOut.setToValue(0.0);
 
-            // Executa o fade out após a barra preencher
+            // Ordem: 1. Mostra -> 2. Preenche a barra -> 3. Esconde
+            fadeIn.setOnFinished(e -> timeline.play());
             timeline.setOnFinished(event -> fadeOut.play());
-            timeline.play();
+            fadeIn.play();
         });
     }
 
@@ -241,7 +285,7 @@ public class OrquestradorController {
 
     @FXML
     private void limparLog() {
-        logData.clear(); // Limpa a lista de dados do log
+        logData.clear();
     }
 
     @FXML
@@ -251,7 +295,7 @@ public class OrquestradorController {
     }
 
     // ==================================================================
-    // MÉTODO DE LOG ATUALIZADO COM ÍCONES
+    // LÓGICA DE ÍCONES E CORES APRIMORADA
     // ==================================================================
     public void adicionarLog(String mensagem) {
         Platform.runLater(() -> {
@@ -259,49 +303,72 @@ public class OrquestradorController {
                     java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")
             );
 
-            // Lógica para interpretar a mensagem e criar um LogEntry
             LogEntry.LogLevel level = LogEntry.LogLevel.INFO;
-            String title = "Informação";
+            String title = "Informação do Sistema";
             String details = mensagem;
+
+            // IGNORA LOGS DE BAIXO VALOR VISUAL
+            if (mensagem.contains("Tarefas no sistema") || mensagem.startsWith("  ↳")) {
+                return;
+            }
 
             if (mensagem.contains("NOVA TAREFA")) {
                 level = LogEntry.LogLevel.TASK_SUBMITTED;
-                title = "Nova Tarefa Submetida";
-                details = mensagem.substring(mensagem.indexOf("↳ ID:"));
-            } else if (mensagem.contains("CONCLUÍDA")) {
-                level = LogEntry.LogLevel.SUCCESS;
-                title = "Tarefa Concluída";
-                details = mensagem.substring(mensagem.indexOf("↳"));
+                title = "Nova Tarefa Recebida";
+                details = mensagem.split("↳")[1].trim();
+            } else if (mensagem.contains("TAREFA CONCLUÍDA")) {
+                level = LogEntry.LogLevel.TASK_COMPLETED;
+                title = "Tarefa Finalizada pelo Worker";
+                details = mensagem.split("↳")[1].trim();
             } else if (mensagem.contains("DISTRIBUINDO")) {
                 level = LogEntry.LogLevel.TASK_DISTRIBUTED;
-                title = "Distribuindo Tarefa";
-                details = mensagem.substring(mensagem.indexOf("para worker:"));
+                title = "Tarefa em Distribuição";
+                details = "Para " + mensagem.split("para")[1].trim();
+            } else if (mensagem.contains("ENVIADA com sucesso")) {
+                level = LogEntry.LogLevel.TASK_SENT;
+                title = "Tarefa Enviada com Sucesso";
+                details = "Confirmado o envio para " + mensagem.split("para")[1].trim();
             } else if (mensagem.contains("FALHA") || mensagem.contains("ERRO")) {
                 level = LogEntry.LogLevel.ERROR;
-                title = "Erro no Sistema";
-                // NOVA CONDIÇÃO: Identifica workers inativos como um aviso
+                title = "Alerta de Erro";
             } else if (mensagem.contains("inativo")) {
-                level = LogEntry.LogLevel.WARNING; // Usando o novo tipo
-                title = "Worker Inativo";
+                level = LogEntry.LogLevel.WARNING;
+                title = "Worker Desconectado";
                 details = mensagem.substring(mensagem.indexOf("Worker")).trim();
+            } else if (mensagem.contains("Reagendando")) {
+                level = LogEntry.LogLevel.WARNING;
+                title = "Reagendando Tarefa";
+                details = mensagem.substring(mensagem.indexOf("tarefa")).trim();
             } else if (mensagem.contains("NOVO WORKER")) {
                 level = LogEntry.LogLevel.SUCCESS;
                 title = "Novo Worker Conectado";
-                details = mensagem.substring(mensagem.indexOf(":")+1).trim();
+                details = mensagem.split(":")[2].trim();
             } else if (mensagem.contains("promovido a Primário")) {
                 level = LogEntry.LogLevel.FAILOVER;
-                title = "Failover de Orquestrador";
-                details = "Backup assumiu como primário.";
+                title = "Failover do Orquestrador";
+                details = "Backup assumiu o controle como primário.";
+            } else if (mensagem.contains("Servidor parado")) {
+                level = LogEntry.LogLevel.ERROR;
+                title = "Servidor Desligado";
+            } else if (mensagem.contains("Login bem-sucedido")) {
+                level = LogEntry.LogLevel.CLIENT_EVENT;
+                title = "Usuário Autenticado";
+                details = mensagem.split("-")[1].trim();
+            } else if (mensagem.contains("Cliente inscrito")) {
+                level = LogEntry.LogLevel.CLIENT_EVENT;
+                title = "Cliente Conectado";
+                details = mensagem.split(":")[1].trim();
+            } else if (mensagem.contains("Notificação enviada")) {
+                level = LogEntry.LogLevel.NOTIFICATION;
+                title = "Notificação de Status Enviada";
+                details = "Para " + mensagem.split("para")[1].split("-")[0].trim();
             }
 
             logData.add(new LogEntry(timestamp, title, details, level));
-
-            // ALTERAÇÃO AQUI: Rola para o último item adicionado
             logListView.scrollTo(logData.size() - 1);
 
-            // Limita o tamanho do log para não consumir muita memória
             if (logData.size() > 200) {
-                logData.remove(logData.size() - 1);
+                logData.remove(0);
             }
         });
     }

@@ -4,14 +4,14 @@ import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import java.io.IOException;
-import java.util.Comparator; // Importar Comparator
+import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import java.util.stream.Collectors; // Importar Collectors
+import java.util.stream.Collectors;
 
 public class OrquestradorCore {
 
@@ -21,6 +21,7 @@ public class OrquestradorCore {
     private static Runnable syncCallback = null;
 
     private static Consumer<String> logCallback = null;
+    private static Runnable healthCheckCallback = null;
 
     public static void setLogCallback(Consumer<String> callback) {
         logCallback = callback;
@@ -35,6 +36,10 @@ public class OrquestradorCore {
 
     public static void setSyncCallback(Runnable callback) {
         syncCallback = callback;
+    }
+
+    public static void setHealthCheckCallback(Runnable callback) {
+        healthCheckCallback = callback;
     }
 
     public static boolean tentarIniciarModoPrimario(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas, AtomicLong lamportClock) {
@@ -85,7 +90,10 @@ public class OrquestradorCore {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
             long timestamp = lamportClock.incrementAndGet();
-            log("[Clock: " + timestamp + "][Health Check] Verificando workers ativos...");
+
+            if (healthCheckCallback != null) {
+                healthCheckCallback.run();
+            }
             long agora = System.currentTimeMillis();
 
             workersAtivos.entrySet().removeIf(entry -> {
@@ -112,9 +120,11 @@ public class OrquestradorCore {
             });
 
             if (!workersAtivos.isEmpty()) {
+                // ESTE LOG TAMBÉM PODE SER REMOVIDO OU MANTIDO PARA OUTROS CONTEXTOS.
+                // Decidi manter, mas se gerar um card desnecessário, podemos ajustar.
                 log("Workers ativos: " + workersAtivos.size() + " | Tarefas no sistema: " + bancoDeTarefas.size());
             }
-        }, 10, 10, TimeUnit.SECONDS);
+        }, 5, 5, TimeUnit.SECONDS);
     }
 
     private static void iniciarTransmissaoDeEstado(Map<String, Long> workersAtivos) {

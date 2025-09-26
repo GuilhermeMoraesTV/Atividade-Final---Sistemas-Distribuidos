@@ -62,13 +62,34 @@
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 3, 0.0, 0, 1);
 }
 
-/* Cores específicas por tipo de evento - AGORA MAIS VARIADAS */
+/* Cores específicas por tipo de evento - MAIS VARIADAS */
 .log-card-info { -fx-border-color: #3498db; } /* Azul (Info) */
 .log-card-success { -fx-border-color: #27ae60; } /* Verde (Sucesso, Concluído, Novo Worker) */
 .log-card-error { -fx-border-color: #c0392b; } /* Vermelho (Erro, Falha) */
-.log-card-task-submitted { -fx-border-color: #f39c12; } /* Laranja (Nova Tarefa) */
-.log-card-task-distributed { -fx-border-color: #8e44ad; } /* Roxo (Tarefa Distribuída) */
+.log-card-task-submitted { -fx-border-color: #f39c12; } /* Laranja (Nova Tarefa no Orquestrador) */
+.log-card-task-distributed { -fx-border-color: #8e44ad; } /* Roxo (Tarefa Distribuída para Worker) */
 .log-card-failover { -fx-border-color: #d35400; } /* Laranja Escuro (Failover) */
+.log-card-warning { -fx-border-color: #f1c40f; } /* Amarelo (Avisos, Worker Inativo, Reagendamento) */
+.log-card-health-check { -fx-border-color: #7f8c8d; } /* Cinza (Health Check no log) */
+.log-card-notification { -fx-border-color: #1abc9c; } /* Turquesa (Notificações) */
+.log-card-client-event { -fx-border-color: #2980b9; } /* Azul escuro (Eventos de Cliente) */
+.log-card-task-sent { -fx-border-color: #20b2aa; } /* Verde-azulado (Tarefa Enviada com Sucesso) */
+.log-card-task-completed { -fx-border-color: #a742b6; } /* Lilás (Tarefa Concluída no Worker) */
+
+
+/* Estilos para o indicador de Health Check */
+.health-check-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #e74c3c; /* Vermelho para o texto */
+    -fx-font-weight: bold;
+}
+
+/* Novo estilo para o texto da barra de sincronização */
+.sync-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #7f8c8d;
+    -fx-font-style: italic;
+}
 
 /* Para eventos de worker inativo ou reagendamento */
 .log-card-warning { -fx-border-color: #f1c40f; } /* Amarelo (Avisos) */

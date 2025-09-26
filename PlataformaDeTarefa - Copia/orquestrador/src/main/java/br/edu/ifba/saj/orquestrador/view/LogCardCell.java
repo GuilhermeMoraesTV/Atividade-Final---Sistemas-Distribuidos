@@ -38,8 +38,11 @@ public class LogCardCell extends ListCell<LogEntry> {
             message.setText(item.getMessage());
             timestamp.setText(item.getTimestamp());
 
-            // Remove estilos antigos para evitar bugs de renderização
-            content.getStyleClass().removeAll("log-card-info", "log-card-success", "log-card-error", "log-card-task-submitted", "log-card-task-distributed", "log-card-failover", "log-card-warning");
+            String[] styleClasses = {"log-card-info", "log-card-success", "log-card-error", "log-card-task-submitted",
+                    "log-card-task-distributed", "log-card-failover", "log-card-warning",
+                    "log-card-health-check", "log-card-notification", "log-card-client-event",
+                    "log-card-task-sent", "log-card-task-completed"}; // NOVOS ESTILOS AQUI
+            content.getStyleClass().removeAll(styleClasses);
 
             switch (item.getLevel()) {
                 case SUCCESS:
@@ -65,6 +68,27 @@ public class LogCardCell extends ListCell<LogEntry> {
                 case WARNING:
                     icon.setText("⚠️");
                     content.getStyleClass().add("log-card-warning");
+                    break;
+                case HEALTH_CHECK:
+                    icon.setText("❤️");
+                    content.getStyleClass().add("log-card-health-check");
+                    break;
+                case NOTIFICATION:
+                    icon.setText("✉️");
+                    content.getStyleClass().add("log-card-notification");
+                    break;
+                case CLIENT_EVENT:
+                    icon.setText("👤");
+                    content.getStyleClass().add("log-card-client-event");
+                    break;
+                // NOVOS CASES PARA TAREFAS
+                case TASK_SENT:
+                    icon.setText("📤"); // Ícone para tarefa enviada
+                    content.getStyleClass().add("log-card-task-sent");
+                    break;
+                case TASK_COMPLETED:
+                    icon.setText("🎉"); // Ícone para tarefa concluída (finalizada no worker)
+                    content.getStyleClass().add("log-card-task-completed");
                     break;
                 default: // INFO
                     icon.setText("ℹ️");

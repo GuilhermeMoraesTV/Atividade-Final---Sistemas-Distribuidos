@@ -202,7 +202,18 @@
                                     <font><Font name="Segoe UI Bold" size="16.0" /></font>
                                 </Label>
 
-                                <ProgressBar fx:id="syncProgressBar" prefWidth="200.0" progress="0.0" styleClass="sync-progress-bar" />
+                                <HBox fx:id="healthCheckStatusBox" alignment="CENTER_LEFT" spacing="10" style="-fx-opacity: 0;">
+                                    <children>
+                                        <Label text="❤️ Verificando Saúde dos Workers..." styleClass="health-check-label"/>
+                                    </children>
+                                </HBox>
+
+                                <HBox fx:id="syncStatusBox" alignment="CENTER_LEFT" spacing="10" style="-fx-opacity: 0;">
+                                    <children>
+                                        <Label text="📡 Sincronizando Backups..." styleClass="sync-label"/>
+                                        <ProgressBar fx:id="syncProgressBar" prefWidth="200.0" progress="0.0" styleClass="sync-progress-bar" HBox.hgrow="ALWAYS" />
+                                    </children>
+                                </HBox>
 
                                 <ListView fx:id="logListView" VBox.vgrow="ALWAYS" styleClass="log-list-view"/>
                             </children>

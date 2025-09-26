@@ -19,6 +19,7 @@ public class OrquestradorService {
     private final AtomicLong lamportClock = new AtomicLong(0);
 
     private Runnable syncCallback = null;
+    private Runnable healthCheckCallback = null;
 
     private Consumer<String> logCallback = null;
 
@@ -37,14 +38,19 @@ public class OrquestradorService {
         this.syncCallback = callback;
     }
 
+    public void setHealthCheckCallback(Runnable callback) {
+        this.healthCheckCallback = callback;
+    }
+
+
     public void iniciarServidor() {
         if (!servidorAtivo) {
             new Thread(() -> {
                 try {
                     log("Iniciando serviços do orquestrador...");
                     OrquestradorCore.setLogCallback(this::log);
-
                     OrquestradorCore.setSyncCallback(this.syncCallback);
+                    OrquestradorCore.setHealthCheckCallback(this.healthCheckCallback);
 
                     OrquestradorCore.tentarIniciarModoPrimario(workersAtivos, bancoDeTarefas, lamportClock);
 
@@ -52,6 +58,7 @@ public class OrquestradorService {
                     log("✅ Orquestrador ATIVO na porta 50050");
                     log("📡 Aguardando conexões de workers e clientes");
                     log("🔄 Sistema pronto para processar tarefas");
+
 
                 } catch (Exception e) {
                     log("❌ ERRO ao iniciar servidor: " + e.getMessage());

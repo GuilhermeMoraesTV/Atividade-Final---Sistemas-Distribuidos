@@ -1,8 +1,10 @@
 package br.edu.ifba.saj.orquestrador.model;
 
 public class LogEntry {
+    // NOVOS NÍVEIS DE LOG ADICIONADOS
     public enum LogLevel {
-        INFO, SUCCESS, ERROR, TASK_SUBMITTED, TASK_DISTRIBUTED, FAILOVER, WARNING
+        INFO, SUCCESS, ERROR, TASK_SUBMITTED, TASK_DISTRIBUTED, FAILOVER, WARNING,
+        HEALTH_CHECK, NOTIFICATION, CLIENT_EVENT, TASK_SENT, TASK_COMPLETED
     }
 
     private final String timestamp;
