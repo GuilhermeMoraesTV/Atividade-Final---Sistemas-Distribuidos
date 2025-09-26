@@ -4,6 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
+<?import javafx.collections.FXCollections?>
 
 <?import java.lang.String?>
 <VBox maxWidth="500.0" prefWidth="500.0" spacing="25.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
@@ -41,16 +42,15 @@
                 <VBox spacing="8.0">
                     <children>
                         <Label styleClass="form-field-label" text="Prioridade" />
-                        <ComboBox fx:id="prioridadeCombo" prefHeight="45.0" prefWidth="200.0" promptText="Selecione..." styleClass="form-combo-box">
+                        <ComboBox fx:id="prioridadeCombo" prefHeight="45.0" prefWidth="200.0" promptText="Selecione..." styleClass="form-combo-box" value="Normal">
                             <items>
-                                <String fx:value="Baixa" />
-                                <String fx:value="Normal" />
-                                <String fx:value="Alta" />
-                                <String fx:value="Urgente" />
+                                <FXCollections fx:factory="observableArrayList">
+                                    <String fx:value="Baixa" />
+                                    <String fx:value="Normal" />
+                                    <String fx:value="Alta" />
+                                    <String fx:value="Urgente" />
+                                </FXCollections>
                             </items>
-                            <value>
-                                <String fx:value="Normal" />
-                            </value>
                         </ComboBox>
                     </children>
                 </VBox>

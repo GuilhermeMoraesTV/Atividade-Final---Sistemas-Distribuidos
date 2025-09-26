@@ -499,7 +499,8 @@
 /* Botões Gerais */
 .button {
     -fx-cursor: hand;
-    -fx-font-family: inherit;
+    -fx-font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+        -fx-font-size: 14px;
 }
 
 /* ScrollPane */

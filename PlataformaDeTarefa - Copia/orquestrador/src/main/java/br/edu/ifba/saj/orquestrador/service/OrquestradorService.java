@@ -17,7 +17,6 @@ public class OrquestradorService {
     private final Map<String, Tarefa> bancoDeTarefas = new java.util.concurrent.ConcurrentHashMap<>();
     private final AtomicLong lamportClock = new AtomicLong(0);
 
-    // CORREÇÃO: Callback para logs
     private Consumer<String> logCallback = null;
 
     public void setLogCallback(Consumer<String> callback) {
@@ -28,20 +27,15 @@ public class OrquestradorService {
         if (logCallback != null) {
             logCallback.accept(mensagem);
         }
-        System.out.println(mensagem); // Manter log no console também
+        System.out.println(mensagem);
     }
 
     public void iniciarServidor() {
         if (!servidorAtivo) {
-            // Inicia o servidor em uma thread separada
             new Thread(() -> {
                 try {
                     log("Iniciando serviços do orquestrador...");
-
-                    // CORREÇÃO: Configurar callbacks de logging
                     OrquestradorCore.setLogCallback(this::log);
-
-                    // CORREÇÃO: Passar referências dos mapas reais
                     OrquestradorCore.tentarIniciarModoPrimario(workersAtivos, bancoDeTarefas, lamportClock);
 
                     servidorAtivo = true;
@@ -54,8 +48,6 @@ public class OrquestradorService {
                     throw new RuntimeException("Erro ao iniciar servidor", e);
                 }
             }).start();
-
-            // CORREÇÃO: Remover dados simulados - deixar sistema limpo
             log("🧹 Sistema iniciado limpo (sem dados simulados)");
         }
     }
@@ -93,15 +85,17 @@ public class OrquestradorService {
                 .map(entry -> {
                     String workerId = entry.getKey();
                     long ultimoHeartbeat = entry.getValue();
-                    long tarefasNoWorker = bancoDeTarefas.values().stream()
+
+                    // CORREÇÃO: Contar tarefas CONCLUÍDAS pelo worker em vez de em execução.
+                    long tarefasConcluidas = bancoDeTarefas.values().stream()
                             .filter(t -> workerId.equals(t.getWorkerIdAtual()) &&
-                                    t.getStatus() == StatusTarefa.EXECUTANDO)
+                                    t.getStatus() == StatusTarefa.CONCLUIDA)
                             .count();
 
                     String status = (agora - ultimoHeartbeat < 15000) ? "ATIVO" : "INATIVO";
                     String ultimoHeartbeatStr = formatarTempo(ultimoHeartbeat);
 
-                    return new WorkerModel(workerId, status, (int) tarefasNoWorker, ultimoHeartbeatStr);
+                    return new WorkerModel(workerId, status, (int) tarefasConcluidas, ultimoHeartbeatStr);
                 })
                 .collect(Collectors.toList());
     }
@@ -109,9 +103,7 @@ public class OrquestradorService {
     public List<TarefaModel> getTarefas() {
         return bancoDeTarefas.values().stream()
                 .map(t -> {
-                    // CORREÇÃO: Formatar dados da tarefa corretamente
                     String descricaoFormatada = formatarDescricaoTarefa(t.getDados());
-
                     return new TarefaModel(
                             t.getId(),
                             descricaoFormatada,
@@ -120,21 +112,17 @@ public class OrquestradorService {
                             t.getUsuarioId()
                     );
                 })
-                .sorted((t1, t2) -> t2.getId().compareTo(t1.getId())) // Mais recente primeiro
+                .sorted((t1, t2) -> t2.getId().compareTo(t1.getId()))
                 .collect(Collectors.toList());
     }
 
-    // CORREÇÃO: Método para formatar descrição das tarefas
     private String formatarDescricaoTarefa(String dados) {
         if (dados == null || dados.trim().isEmpty()) {
             return "Tarefa sem descrição";
         }
-
-        // Se for muito longo, truncar
         if (dados.length() > 100) {
             return dados.substring(0, 97) + "...";
         }
-
         return dados;
     }
 
@@ -144,7 +132,6 @@ public class OrquestradorService {
                     long totalTarefas = bancoDeTarefas.values().stream()
                             .filter(t -> usuario.equals(t.getUsuarioId()))
                             .count();
-
                     return new UsuarioModel(usuario, "REGISTRADO", (int) totalTarefas);
                 })
                 .collect(Collectors.toList());

@@ -20,12 +20,17 @@ public class ClienteGUI extends Application {
         ViewManager viewManager = new ViewManager(primaryStage, clienteService);
 
         primaryStage.setTitle("Plataforma de Tarefas Distribuídas");
-        viewManager.showLoginScreen(); // Apenas pede para o ViewManager mostrar a tela inicial
+        primaryStage.setMinWidth(800);
+        primaryStage.setMinHeight(600);
+
+        viewManager.showLoginScreen();
         primaryStage.show();
 
+        // Só fecha o serviço quando a aplicação for fechada completamente
         primaryStage.setOnCloseRequest(e -> {
             clienteService.shutdown();
             Platform.exit();
+            System.exit(0);
         });
     }
 }

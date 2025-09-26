@@ -7,6 +7,7 @@ import br.edu.ifba.saj.protocolo.TarefaInfo;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
@@ -19,6 +20,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 
 public class MainController {
 
@@ -32,6 +35,14 @@ public class MainController {
     @FXML private TableColumn<TarefaModel, String> terminadaEmCol;
     @FXML private TableColumn<TarefaModel, Void> acoesCol;
     @FXML private Label usuarioLogadoLabel;
+
+    @FXML private Label executandoCountLabel;
+    @FXML private Label concluidasCountLabel;
+    @FXML private Label pendentesCountLabel;
+
+    @FXML private MenuButton prioridadeMenuButton;
+    @FXML private MenuButton statusMenuButton;
+
 
     private ClienteService clienteService;
     private ViewManager viewManager;
@@ -50,6 +61,7 @@ public class MainController {
     public void initialize() {
         setupTableColumns();
         tabelaTarefas.setItems(tarefasData);
+        atualizarEstatisticas();
     }
 
     private void setupTableColumns() {
@@ -80,6 +92,7 @@ public class MainController {
                             setStyle("-fx-background-color: #fef3c7; -fx-text-fill: #92400e; -fx-background-radius: 4;");
                             break;
                         case "pendente":
+                        case "aguardando": // Adicionado para cobrir outro status
                             setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-background-radius: 4;");
                             break;
                         default:
@@ -145,6 +158,17 @@ public class MainController {
             }
         });
     }
+
+    private void atualizarEstatisticas() {
+        long executando = tarefasData.stream().filter(t -> "EXECUTANDO".equalsIgnoreCase(t.getStatus())).count();
+        long concluidas = tarefasData.stream().filter(t -> "CONCLUIDA".equalsIgnoreCase(t.getStatus())).count();
+        long pendentes = tarefasData.stream().filter(t -> "AGUARDANDO".equalsIgnoreCase(t.getStatus())).count();
+
+        executandoCountLabel.setText(String.valueOf(executando));
+        concluidasCountLabel.setText(String.valueOf(concluidas));
+        pendentesCountLabel.setText(String.valueOf(pendentes));
+    }
+
 
     @FXML
     private void handleNovaTarefa() {
@@ -233,22 +257,47 @@ public class MainController {
         handleNovaTarefa(); // Mesma funcionalidade, nome diferente
     }
 
+    // ==================================================================
+    // LÓGICA DE FILTRO ATUALIZADA (BUSCA APENAS POR TÍTULO)
+    // ==================================================================
     @FXML
     private void handleFilter() {
         String filterText = filterField.getText().toLowerCase().trim();
-        if (filterText.isEmpty()) {
-            tabelaTarefas.setItems(tarefasData);
-        } else {
-            ObservableList<TarefaModel> filteredList = tarefasData.stream()
-                    .filter(t ->
-                            t.getTitulo().toLowerCase().contains(filterText) ||
-                                    t.getStatus().toLowerCase().contains(filterText) ||
-                                    t.getId().toLowerCase().contains(filterText) ||
-                                    t.getPrioridade().toLowerCase().contains(filterText)
-                    )
-                    .collect(Collectors.toCollection(FXCollections::observableArrayList));
-            tabelaTarefas.setItems(filteredList);
+        String prioridade = prioridadeMenuButton.getText();
+        String status = statusMenuButton.getText();
+
+        Stream<TarefaModel> stream = tarefasData.stream();
+
+        // Filtro de texto (APENAS TÍTULO)
+        if (!filterText.isEmpty()) {
+            stream = stream.filter(t ->
+                    t.getTitulo().toLowerCase().contains(filterText)
+            );
         }
+
+        // Filtro de prioridade
+        if (!"Todas".equalsIgnoreCase(prioridade)) {
+            stream = stream.filter(t -> prioridade.equalsIgnoreCase(t.getPrioridade()));
+        }
+
+        // Filtro de status
+        if (!"Todos".equalsIgnoreCase(status)) {
+            stream = stream.filter(t -> status.equalsIgnoreCase(t.getStatus()));
+        }
+
+        tabelaTarefas.setItems(stream.collect(Collectors.toCollection(FXCollections::observableArrayList)));
+    }
+
+    @FXML
+    private void handleFiltroPrioridade(ActionEvent event) {
+        String prioridadeSelecionada = ((MenuItem) event.getSource()).getText();
+        prioridadeMenuButton.setText(prioridadeSelecionada);
+    }
+
+    @FXML
+    private void handleFiltroStatus(ActionEvent event) {
+        String statusSelecionado = ((MenuItem) event.getSource()).getText();
+        statusMenuButton.setText(statusSelecionado);
     }
 
     @FXML
@@ -307,25 +356,21 @@ public class MainController {
 
     private void onTarefaUpdate(TarefaInfo tarefaInfo) {
         Platform.runLater(() -> {
-            // Procura por tarefa existente
             Optional<TarefaModel> tarefaExistente = tarefasData.stream()
                     .filter(t -> t.getId().equals(tarefaInfo.getId()))
                     .findFirst();
 
             if (tarefaExistente.isPresent()) {
-                // Atualiza tarefa existente
                 TarefaModel tarefa = tarefaExistente.get();
                 tarefa.statusProperty().set(tarefaInfo.getStatus());
                 tarefa.workerProperty().set(tarefaInfo.getWorkerId());
 
-                // Se a tarefa foi concluída, atualiza a data
                 if ("CONCLUIDA".equalsIgnoreCase(tarefaInfo.getStatus())) {
                     tarefa.terminadaEmProperty().set(
                             LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                     );
                 }
             } else {
-                // Adiciona nova tarefa
                 String[] partesDescricao = extrairInformacoesDaDescricao(tarefaInfo.getDescricao());
                 String titulo = partesDescricao[0];
                 String prioridade = partesDescricao[1];
@@ -344,7 +389,8 @@ public class MainController {
                 );
                 tarefasData.add(novaTarefa);
             }
-            handleFilter(); // Reaplica filtros se houver
+            handleFilter();
+            atualizarEstatisticas();
         });
     }
 
@@ -352,7 +398,6 @@ public class MainController {
         String titulo = descricao;
         String prioridade = "Normal";
 
-        // Tenta extrair informações do formato [PRIORIDADE] Título: Descrição
         if (descricao.startsWith("[") && descricao.contains("]")) {
             int fimPrioridade = descricao.indexOf("]");
             if (fimPrioridade > 1) {
@@ -366,11 +411,9 @@ public class MainController {
                 }
             }
         } else if (descricao.contains(":")) {
-            // Se não tem formato de prioridade, mas tem ":", assume que o que vem antes é o título
             titulo = descricao.substring(0, descricao.indexOf(":")).trim();
         }
 
-        // Limita o tamanho do título para não quebrar a tabela
         if (titulo.length() > 50) {
             titulo = titulo.substring(0, 47) + "...";
         }
@@ -390,8 +433,8 @@ public class MainController {
                                     t.getDescricao(),
                                     t.getStatus(),
                                     t.getWorkerId(),
-                                    info[0], // título
-                                    info[1], // prioridade
+                                    info[0],
+                                    info[1],
                                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
                                     "CONCLUIDA".equalsIgnoreCase(t.getStatus()) ?
                                             LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) :
@@ -404,6 +447,7 @@ public class MainController {
                     tarefasData.clear();
                     tarefasData.addAll(tarefasParaTabela);
                     handleFilter();
+                    atualizarEstatisticas();
                 });
             } catch (Exception e) {
                 System.err.println("Erro ao atualizar tabela de tarefas: " + e.getMessage());

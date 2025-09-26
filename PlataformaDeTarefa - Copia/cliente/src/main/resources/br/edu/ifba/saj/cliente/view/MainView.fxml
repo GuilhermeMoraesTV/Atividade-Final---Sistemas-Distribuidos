@@ -6,7 +6,6 @@
 <?import javafx.scene.text.*?>
 
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="900.0" prefWidth="1400.0" styleClass="dashboard-main-background" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.edu.ifba.saj.cliente.controller.MainController">
-    <!-- Header Superior -->
     <top>
         <HBox alignment="CENTER_LEFT" prefHeight="80.0" styleClass="dashboard-header" BorderPane.alignment="CENTER">
             <children>
@@ -36,7 +35,6 @@
 
     <center>
         <HBox spacing="0.0" BorderPane.alignment="CENTER">
-            <!-- Sidebar de Navegação -->
             <VBox prefWidth="300.0" styleClass="modern-sidebar" HBox.hgrow="NEVER">
                 <children>
                     <VBox spacing="15.0">
@@ -59,7 +57,6 @@
                         </children>
                     </VBox>
 
-                    <!-- Estatísticas Quick -->
                     <VBox spacing="15.0" VBox.vgrow="ALWAYS">
                         <children>
                             <Label styleClass="sidebar-title" text="Estatísticas Rápidas" />
@@ -69,7 +66,7 @@
                                         <children>
                                             <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
                                                 <children>
-                                                    <Label styleClass="stat-number" text="0" />
+                                                    <Label fx:id="executandoCountLabel" styleClass="stat-number" text="0" />
                                                     <Label styleClass="stat-label" text="Em Execução" />
                                                 </children>
                                             </VBox>
@@ -80,7 +77,7 @@
                                         <children>
                                             <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
                                                 <children>
-                                                    <Label styleClass="stat-number" text="0" />
+                                                    <Label fx:id="concluidasCountLabel" styleClass="stat-number" text="0" />
                                                     <Label styleClass="stat-label" text="Concluídas" />
                                                 </children>
                                             </VBox>
@@ -91,7 +88,7 @@
                                         <children>
                                             <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
                                                 <children>
-                                                    <Label styleClass="stat-number" text="0" />
+                                                    <Label fx:id="pendentesCountLabel" styleClass="stat-number" text="0" />
                                                     <Label styleClass="stat-label" text="Pendentes" />
                                                 </children>
                                             </VBox>
@@ -111,10 +108,8 @@
                 </padding>
             </VBox>
 
-            <!-- Área de Conteúdo Principal -->
             <VBox spacing="25.0" styleClass="main-content-area" HBox.hgrow="ALWAYS">
                 <children>
-                    <!-- Cabeçalho da Seção -->
                     <HBox alignment="CENTER_LEFT">
                         <children>
                             <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
@@ -127,7 +122,6 @@
                         </children>
                     </HBox>
 
-                    <!-- Barra de Filtros e Busca -->
                     <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="filter-bar">
                         <children>
                             <VBox spacing="5.0">
@@ -139,12 +133,13 @@
                             <VBox spacing="5.0">
                                 <children>
                                     <Label styleClass="filter-label" text="Prioridade" />
-                                    <MenuButton mnemonicParsing="false" prefHeight="40.0" prefWidth="150.0" styleClass="filter-dropdown" text="Todas">
+                                    <MenuButton fx:id="prioridadeMenuButton" mnemonicParsing="false" prefHeight="40.0" prefWidth="150.0" styleClass="filter-dropdown" text="Todas">
                                         <items>
-                                            <MenuItem mnemonicParsing="false" text="Todas" />
-                                            <MenuItem mnemonicParsing="false" text="Alta" />
-                                            <MenuItem mnemonicParsing="false" text="Normal" />
-                                            <MenuItem mnemonicParsing="false" text="Baixa" />
+                                            <MenuItem mnemonicParsing="false" onAction="#handleFiltroPrioridade" text="Todas" />
+                                            <MenuItem mnemonicParsing="false" onAction="#handleFiltroPrioridade" text="Urgente" />
+                                            <MenuItem mnemonicParsing="false" onAction="#handleFiltroPrioridade" text="Alta" />
+                                            <MenuItem mnemonicParsing="false" onAction="#handleFiltroPrioridade" text="Normal" />
+                                            <MenuItem mnemonicParsing="false" onAction="#handleFiltroPrioridade" text="Baixa" />
                                         </items>
                                     </MenuButton>
                                 </children>
@@ -152,12 +147,12 @@
                             <VBox spacing="5.0">
                                 <children>
                                     <Label styleClass="filter-label" text="Status" />
-                                    <MenuButton mnemonicParsing="false" prefHeight="40.0" prefWidth="150.0" styleClass="filter-dropdown" text="Todos">
+                                    <MenuButton fx:id="statusMenuButton" mnemonicParsing="false" prefHeight="40.0" prefWidth="150.0" styleClass="filter-dropdown" text="Todos">
                                         <items>
-                                            <MenuItem mnemonicParsing="false" text="Todos" />
-                                            <MenuItem mnemonicParsing="false" text="Pendente" />
-                                            <MenuItem mnemonicParsing="false" text="Em Execução" />
-                                            <MenuItem mnemonicParsing="false" text="Concluída" />
+                                            <MenuItem mnemonicParsing="false" onAction="#handleFiltroStatus" text="Todos" />
+                                            <MenuItem mnemonicParsing="false" onAction="#handleFiltroStatus" text="Aguardando" />
+                                            <MenuItem mnemonicParsing="false" onAction="#handleFiltroStatus" text="Executando" />
+                                            <MenuItem mnemonicParsing="false" onAction="#handleFiltroStatus" text="Concluida" />
                                         </items>
                                     </MenuButton>
                                 </children>
@@ -174,13 +169,14 @@
                         </padding>
                     </HBox>
 
-                    <!-- Tabela de Tarefas -->
                     <TableView fx:id="tabelaTarefas" styleClass="modern-table" VBox.vgrow="ALWAYS">
                         <columns>
-                            <TableColumn fx:id="idCol" maxWidth="120.0" minWidth="120.0" prefWidth="120.0" text="ID" />
+                            <TableColumn fx:id="idCol" maxWidth="120.0"
+                                         minWidth="120.0" prefWidth="120.0" text="ID" />
                             <TableColumn fx:id="tituloCol" minWidth="200.0" prefWidth="250.0" text="Título" />
                             <TableColumn fx:id="prioridadeCol" maxWidth="100.0" minWidth="100.0" prefWidth="100.0" text="Prioridade" />
-                            <TableColumn fx:id="statusCol" maxWidth="120.0" minWidth="120.0" prefWidth="120.0" text="Status" />
+                            <TableColumn fx:id="statusCol"
+                                         maxWidth="120.0" minWidth="120.0" prefWidth="120.0" text="Status" />
                             <TableColumn fx:id="criadaEmCol" maxWidth="130.0" minWidth="130.0" prefWidth="130.0" text="Criada em" />
                             <TableColumn fx:id="terminadaEmCol" maxWidth="130.0" minWidth="130.0" prefWidth="130.0" text="Concluída em" />
                             <TableColumn fx:id="acoesCol" maxWidth="120.0" minWidth="120.0" prefWidth="120.0" text="Ações" />

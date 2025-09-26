@@ -23,6 +23,22 @@ public class Tarefa {
     public String getWorkerIdAtual() { return workerIdAtual; }
     public void setWorkerIdAtual(String workerIdAtual) { this.workerIdAtual = workerIdAtual; }
 
+    // Extrai a prioridade da string de dados.
+    // Retorna Prioridade.NORMAL se nenhuma for encontrada.
+
+    public Prioridade getPrioridade() {
+        if (dados != null && dados.startsWith("[")) {
+            String prioridadeStr = dados.substring(1, dados.indexOf("]"));
+            try {
+                return Prioridade.valueOf(prioridadeStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Ignora se a string não for uma prioridade válida
+            }
+        }
+        return Prioridade.NORMAL;
+    }
+
+
     @Override
     public String toString() {
         return "Tarefa{" +

@@ -12,7 +12,7 @@ import java.io.IOException;
 public class ViewManager {
 
     private final Stage primaryStage;
-    private final ClienteService clienteService;
+    private ClienteService clienteService; // Removido o 'final'
 
     public ViewManager(Stage primaryStage, ClienteService clienteService) {
         this.primaryStage = primaryStage;
@@ -21,6 +21,8 @@ public class ViewManager {
 
     public void showLoginScreen() {
         try {
+            // Crie uma nova instância do ClienteService para garantir um canal novo e aberto.
+            this.clienteService = new ClienteService();
 
             FXMLLoader loader = new FXMLLoader(getClass().getResource("LoginView.fxml"));
             Parent root = loader.load();
@@ -36,7 +38,6 @@ public class ViewManager {
 
     public void showMainDashboard(String nomeUsuario) {
         try {
-            // CORREÇÃO: O caminho para o FXML agora precisa ser absoluto a partir da pasta 'resources'
             FXMLLoader loader = new FXMLLoader(getClass().getResource("MainView.fxml"));
             Parent root = loader.load();
             MainController controller = loader.getController();

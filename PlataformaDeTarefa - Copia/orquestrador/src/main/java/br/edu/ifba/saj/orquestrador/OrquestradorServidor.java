@@ -175,6 +175,32 @@ public class OrquestradorServidor {
         }
 
         @Override
+        public void consultarStatusTarefas(ConsultarStatusRequest request, StreamObserver<ConsultarStatusResponse> responseObserver) {
+            String usuario = AutenticacaoImpl.validarToken(request.getTokenSessao());
+            if (usuario == null) {
+                responseObserver.onError(Status.UNAUTHENTICATED.withDescription("Token de sessão inválido.").asRuntimeException());
+                return;
+            }
+
+            List<TarefaInfo> tarefasDoUsuario = bancoDeTarefas.values().stream()
+                    .filter(tarefa -> usuario.equals(tarefa.getUsuarioId()))
+                    .map(tarefa -> TarefaInfo.newBuilder()
+                            .setId(tarefa.getId())
+                            .setDescricao(tarefa.getDados())
+                            .setStatus(tarefa.getStatus().toString())
+                            .setWorkerId(tarefa.getWorkerIdAtual() != null ? tarefa.getWorkerIdAtual() : "N/A")
+                            .build())
+                    .collect(Collectors.toList());
+
+            ConsultarStatusResponse response = ConsultarStatusResponse.newBuilder()
+                    .addAllTarefas(tarefasDoUsuario)
+                    .build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        }
+
+        @Override
         public void enviarHeartbeat(HeartbeatRequest request, StreamObserver<HeartbeatResponse> responseObserver) {
             lamportClock.updateAndGet(current -> Math.max(current, request.getLamportTimestamp()) + 1);
             String workerId = request.getWorkerId();
@@ -219,6 +245,8 @@ public class OrquestradorServidor {
             Tarefa tarefa = bancoDeTarefas.get(request.getTarefaId());
 
             if (tarefa != null && tarefa.getStatus() != StatusTarefa.CONCLUIDA) {
+                // CORREÇÃO: Garante que o worker que completou a tarefa seja o que está associado a ela.
+                tarefa.setWorkerIdAtual(request.getWorkerId());
                 tarefa.setStatus(StatusTarefa.CONCLUIDA);
                 log("[Clock: " + lamportClock.get() + "] TAREFA CONCLUÍDA: " + tarefa.getId() + " pelo worker " + request.getWorkerId());
                 log("  ↳ Descrição: " + tarefa.getDados());

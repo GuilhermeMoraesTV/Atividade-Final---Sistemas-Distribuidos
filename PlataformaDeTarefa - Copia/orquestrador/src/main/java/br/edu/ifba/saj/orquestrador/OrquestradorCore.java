@@ -4,19 +4,20 @@ import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import java.io.IOException;
+import java.util.Comparator; // Importar Comparator
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.stream.Collectors; // Importar Collectors
 
 public class OrquestradorCore {
 
     private static final int GRPC_PORT = 50050;
     private static final long TIMEOUT_WORKER_MS = 15000;
 
-    // CORREÇÃO: Callback para logs
     private static Consumer<String> logCallback = null;
 
     public static void setLogCallback(Consumer<String> callback) {
@@ -30,14 +31,12 @@ public class OrquestradorCore {
         System.out.println(mensagem);
     }
 
-    // ASSINATURA DO MÉTODO CORRIGIDA para aceitar os 3 parâmetros
     public static boolean tentarIniciarModoPrimario(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas, AtomicLong lamportClock) {
         log("ATIVANDO MODO PRIMÁRIO...");
         try {
             OrquestradorServidor.GerenciadorTarefasImpl servicoTarefas = new OrquestradorServidor.GerenciadorTarefasImpl(workersAtivos, bancoDeTarefas, lamportClock);
             OrquestradorServidor.MonitoramentoImpl servicoMonitor = new OrquestradorServidor.MonitoramentoImpl(workersAtivos, bancoDeTarefas);
 
-            // CORREÇÃO: Passar callback de log para os serviços
             servicoTarefas.setLogCallback(OrquestradorCore::log);
 
             iniciarServidorGrpc(servicoTarefas, servicoMonitor);
@@ -90,7 +89,6 @@ public class OrquestradorCore {
                     String workerIdFalho = entry.getKey();
                     log("[Clock: " + eventTimestamp + "] Worker " + workerIdFalho + " considerado inativo. Removendo da lista.");
 
-                    // Reagendar tarefas do worker falhado
                     long tarefasReagendadas = bancoDeTarefas.values().stream()
                             .filter(t -> workerIdFalho.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.EXECUTANDO)
                             .peek(t -> {
@@ -124,22 +122,29 @@ public class OrquestradorCore {
         }, 2, 2, TimeUnit.SECONDS);
     }
 
+    // ==================================================================
+    // LÓGICA DE PRIORIDADE IMPLEMENTADA AQUI
+    // ==================================================================
     private static void iniciarReagendadorDeTarefas(Map<String, Tarefa> bancoDeTarefas, OrquestradorServidor.GerenciadorTarefasImpl servico) {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
-            long tarefasAguardando = bancoDeTarefas.values().stream()
+            // 1. Filtra as tarefas que estão aguardando
+            var tarefasAguardando = bancoDeTarefas.values().stream()
                     .filter(tarefa -> tarefa.getStatus() == StatusTarefa.AGUARDANDO)
-                    .count();
+                    .collect(Collectors.toList());
 
-            if (tarefasAguardando > 0) {
-                log("[Reagendador] Encontradas " + tarefasAguardando + " tarefas em espera");
+            if (!tarefasAguardando.isEmpty()) {
+                log("[Reagendador] Encontradas " + tarefasAguardando.size() + " tarefas em espera. Verificando prioridades...");
 
-                bancoDeTarefas.values().stream()
-                        .filter(tarefa -> tarefa.getStatus() == StatusTarefa.AGUARDANDO)
-                        .forEach(tarefa -> {
-                            log("[Reagendador] Tentando alocar tarefa: " + tarefa.getId() + " - " + tarefa.getDados());
-                            servico.distribuirTarefa(tarefa, null);
-                        });
+                // 2. Ordena a lista de tarefas pela prioridade (da maior para a menor)
+                tarefasAguardando.sort(Comparator.comparing((Tarefa t) -> t.getPrioridade().getNivel()).reversed());
+
+                // 3. Itera sobre a lista ordenada e tenta alocar cada tarefa
+                for (Tarefa tarefa : tarefasAguardando) {
+                    log("[Reagendador] Tentando alocar tarefa prioritária: " + tarefa.getPrioridade() + " - " + tarefa.getId());
+                    // O método distribuirTarefa já verifica se há workers disponíveis
+                    servico.distribuirTarefa(tarefa, null);
+                }
             }
         }, 15, 15, TimeUnit.SECONDS);
     }
