@@ -1,0 +1,552 @@
+/* ==========================================
+   PLATAFORMA DE TAREFAS DISTRIBUÍDAS - CSS
+   Design Moderno e Profissional
+   ========================================== */
+
+/* === CORES E VARIÁVEIS === */
+* {
+    -fx-primary: #2563eb;
+    -fx-primary-dark: #1d4ed8;
+    -fx-secondary: #10b981;
+    -fx-secondary-dark: #059669;
+    -fx-danger: #ef4444;
+    -fx-warning: #f59e0b;
+    -fx-success: #22c55e;
+    -fx-dark: #1f2937;
+    -fx-light: #f8fafc;
+    -fx-gray-100: #f1f5f9;
+    -fx-gray-200: #e2e8f0;
+    -fx-gray-300: #cbd5e1;
+    -fx-gray-400: #94a3b8;
+    -fx-gray-500: #64748b;
+    -fx-gray-600: #475569;
+    -fx-gray-700: #334155;
+    -fx-gray-800: #1e293b;
+    -fx-text-primary: #0f172a;
+    -fx-text-secondary: #64748b;
+}
+
+/* === RESET E BASE === */
+.root {
+    -fx-font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 14px;
+    -fx-background-color: -fx-light;
+}
+
+/* ==========================================
+   TELA DE LOGIN
+   ========================================== */
+
+/* Background Principal */
+.login-main-background {
+    -fx-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Painel Esquerdo - Welcome */
+.login-left-panel {
+    -fx-background-color: transparent;
+}
+
+.welcome-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: 300;
+    -fx-fill: white;
+}
+
+.platform-title {
+    -fx-font-size: 36px;
+    -fx-font-weight: bold;
+    -fx-fill: white;
+}
+
+.welcome-subtitle {
+    -fx-font-size: 16px;
+    -fx-font-weight: normal;
+    -fx-fill: white;
+    -fx-text-alignment: center;
+}
+
+/* Painel Direito - Formulário */
+.login-right-panel {
+    -fx-background-color: white;
+    -fx-background-radius: 0 0 0 30;
+}
+
+.login-form-container {
+    -fx-background-color: white;
+    -fx-background-radius: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 20, 0, 0, 5);
+}
+
+.login-form-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-fill: -fx-text-primary;
+}
+
+.login-form-subtitle {
+    -fx-font-size: 14px;
+    -fx-fill: -fx-text-secondary;
+}
+
+/* Campos de Input Modernos */
+.field-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.modern-text-field,
+.modern-password-field {
+    -fx-background-color: white;
+    -fx-border-color: -fx-gray-300;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 14px;
+    -fx-padding: 0 15 0 15;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.modern-text-field:focused,
+.modern-password-field:focused {
+    -fx-border-color: -fx-primary;
+    -fx-background-color: #fafbff;
+    -fx-effect: dropshadow(gaussian, rgba(37, 99, 235, 0.2), 8, 0, 0, 0);
+}
+
+/* Botão de Login */
+.login-button {
+    -fx-background-color: linear-gradient(135deg, -fx-primary 0%, -fx-primary-dark 100%);
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(37, 99, 235, 0.3), 10, 0, 0, 3);
+}
+
+.login-button:hover {
+    -fx-background-color: linear-gradient(135deg, -fx-primary-dark 0%, #1e40af 100%);
+    -fx-effect: dropshadow(gaussian, rgba(37, 99, 235, 0.4), 15, 0, 0, 5);
+}
+
+.login-button:pressed {
+    -fx-effect: dropshadow(gaussian, rgba(37, 99, 235, 0.2), 5, 0, 0, 2);
+}
+
+/* Botão de Registro */
+.register-button {
+    -fx-background-color: transparent;
+    -fx-border-color: -fx-primary;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: -fx-primary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.register-button:hover {
+    -fx-background-color: -fx-primary;
+    -fx-text-fill: white;
+}
+
+/* Links e Texto */
+.forgot-password-link {
+    -fx-text-fill: -fx-primary;
+    -fx-font-size: 13px;
+}
+
+.forgot-password-link:hover {
+    -fx-text-fill: -fx-primary-dark;
+}
+
+.separator-text {
+    -fx-font-size: 12px;
+    -fx-fill: -fx-text-secondary;
+}
+
+.register-text {
+    -fx-font-size: 14px;
+    -fx-fill: -fx-text-secondary;
+}
+
+/* Status Label */
+.status-label {
+    -fx-text-fill: -fx-danger;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
+}
+
+/* ==========================================
+   DASHBOARD PRINCIPAL
+   ========================================== */
+
+.dashboard-main-background {
+    -fx-background-color: #f8fafc;
+}
+
+/* Header do Dashboard */
+.dashboard-header {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent #e2e8f0 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.dashboard-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-fill: -fx-text-primary;
+}
+
+.dashboard-subtitle {
+    -fx-font-size: 13px;
+    -fx-fill: -fx-text-secondary;
+}
+
+.user-welcome {
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.user-subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.logout-button {
+    -fx-background-color: -fx-danger;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-padding: 10 20 10 20;
+}
+
+.logout-button:hover {
+    -fx-background-color: #dc2626;
+}
+
+/* Sidebar Moderna */
+.modern-sidebar {
+    -fx-background-color: white;
+    -fx-border-color: transparent #e2e8f0 transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.sidebar-title {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-padding: 0 0 10 0;
+}
+
+.sidebar-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-padding: 15 20 15 20;
+    -fx-alignment: center-left;
+}
+
+.sidebar-button:hover {
+    -fx-background-color: #f1f5f9;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.sidebar-button-active {
+    -fx-background-color: #eff6ff;
+    -fx-text-fill: -fx-primary;
+    -fx-font-weight: 600;
+}
+
+/* Estatísticas da Sidebar */
+.stat-item {
+    -fx-background-color: #f8fafc;
+    -fx-background-radius: 8;
+    -fx-padding: 15 20 15 15;
+}
+
+.stat-number {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.stat-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.stat-indicator-running {
+    -fx-background-color: -fx-warning;
+    -fx-background-radius: 3;
+}
+
+.stat-indicator-completed {
+    -fx-background-color: -fx-success;
+    -fx-background-radius: 3;
+}
+
+.stat-indicator-pending {
+    -fx-background-color: -fx-gray-400;
+    -fx-background-radius: 3;
+}
+
+/* Área de Conteúdo Principal */
+.main-content-area {
+    -fx-background-color: transparent;
+}
+
+.section-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.section-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.primary-action-button {
+    -fx-background-color: -fx-secondary;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-background-radius: 10;
+    -fx-padding: 12 24 12 24;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(16, 185, 129, 0.3), 8, 0, 0, 2);
+}
+
+.primary-action-button:hover {
+    -fx-background-color: -fx-secondary-dark;
+    -fx-effect: dropshadow(gaussian, rgba(16, 185, 129, 0.4), 12, 0, 0, 4);
+}
+
+/* Barra de Filtros */
+.filter-bar {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);
+}
+
+.filter-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.search-input {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 14px;
+    -fx-padding: 0 15 0 15;
+}
+
+.search-input:focused {
+    -fx-border-color: -fx-primary;
+    -fx-background-color: white;
+}
+
+.filter-dropdown {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 14px;
+}
+
+.filter-button {
+    -fx-background-color: -fx-primary;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.filter-button:hover {
+    -fx-background-color: -fx-primary-dark;
+}
+
+/* Tabela Moderna */
+.modern-table {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 8, 0, 0, 2);
+}
+
+.modern-table .column-header-background {
+    -fx-background-color: #f8fafc;
+    -fx-background-radius: 12 12 0 0;
+    -fx-border-color: transparent transparent #e2e8f0 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.modern-table .column-header .label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.modern-table .table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent #f1f5f9 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-cell-size: 50;
+}
+
+.modern-table .table-row-cell:odd {
+    -fx-background-color: #fafbff;
+}
+
+.modern-table .table-row-cell:selected {
+    -fx-background-color: #eff6ff;
+    -fx-border-color: -fx-primary;
+}
+
+.modern-table .table-cell {
+    -fx-padding: 15 20 15 20;
+    -fx-alignment: center-left;
+    -fx-font-size: 14px;
+    -fx-text-fill: -fx-text-primary;
+}
+
+/* ==========================================
+   DIÁLOGO DE NOVA TAREFA
+   ========================================== */
+
+.dialog-header {
+    -fx-padding: 0 0 10 0;
+}
+
+.dialog-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-fill: -fx-text-primary;
+}
+
+.dialog-subtitle {
+    -fx-font-size: 14px;
+    -fx-fill: -fx-text-secondary;
+}
+
+.form-field-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.form-text-field,
+.form-text-area,
+.form-combo-box {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 14px;
+    -fx-padding: 12 15 12 15;
+}
+
+.form-text-field:focused,
+.form-text-area:focused,
+.form-combo-box:focused {
+    -fx-border-color: -fx-primary;
+    -fx-background-color: white;
+    -fx-effect: dropshadow(gaussian, rgba(37, 99, 235, 0.1), 8, 0, 0, 0);
+}
+
+.form-help-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.info-box {
+    -fx-background-color: #eff6ff;
+    -fx-border-color: #bfdbfe;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 15;
+}
+
+.info-text {
+    -fx-font-size: 13px;
+    -fx-fill: #1e40af;
+}
+
+/* ==========================================
+   COMPONENTES GERAIS
+   ========================================== */
+
+/* Botões Gerais */
+.button {
+    -fx-cursor: hand;
+    -fx-font-family: inherit;
+}
+
+/* ScrollPane */
+.scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-pane .scroll-bar:vertical .track {
+    -fx-background-color: #f1f5f9;
+    -fx-background-radius: 5;
+}
+
+.scroll-pane .scroll-bar:vertical .thumb {
+    -fx-background-color: #cbd5e1;
+    -fx-background-radius: 5;
+}
+
+.scroll-pane .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #94a3b8;
+}
+
+/* Animações e Transições */
+.modern-table,
+.filter-bar,
+.login-form-container,
+.info-box {
+    -fx-scale-x: 1;
+    -fx-scale-y: 1;
+}
+
+/* Estados de Hover para Cards */
+.filter-bar:hover,
+.modern-table:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12, 0, 0, 4);
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+    .section-title {
+        -fx-font-size: 24px;
+    }
+
+    .dashboard-title {
+        -fx-font-size: 20px;
+    }
+}

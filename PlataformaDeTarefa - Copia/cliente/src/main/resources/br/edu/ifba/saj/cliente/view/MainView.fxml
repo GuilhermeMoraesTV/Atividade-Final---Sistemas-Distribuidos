@@ -1,88 +1,196 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.MenuButton?>
-<?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.Separator?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
-<?import javafx.scene.text.Text?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
 
-<?import java.lang.String?>
-<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="700.0" prefWidth="1000.0" styleClass="dashboard-background" stylesheets="@../styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.edu.ifba.saj.cliente.controller.MainController">
-    <left>
-        <VBox prefWidth="240.0" styleClass="sidebar" BorderPane.alignment="CENTER">
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="900.0" prefWidth="1400.0" styleClass="dashboard-main-background" stylesheets="@../css/style.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.edu.ifba.saj.cliente.controller.MainController">
+    <!-- Header Superior -->
+    <top>
+        <HBox alignment="CENTER_LEFT" prefHeight="80.0" styleClass="dashboard-header" BorderPane.alignment="CENTER">
             <children>
-                <Label text="Gerenciador de Tarefas" textFill="WHITE">
-                    <font>
-                        <Font name="System Bold" size="18.0" />
-                    </font>
-                    <VBox.margin>
-                        <Insets bottom="20.0" />
-                    </VBox.margin>
-                </Label>
-                <Button alignment="CENTER_LEFT" mnemonicParsing="false" prefHeight="40.0" prefWidth="220.0" styleClass="button" text="Minhas tarefas" textFill="WHITE" />
-                <Button alignment="CENTER_LEFT" mnemonicParsing="false" prefHeight="40.0" prefWidth="220.0" styleClass="button" text="+ Cadastrar" textFill="WHITE">
-                    <VBox.margin>
-                        <Insets />
-                    </VBox.margin>
-                </Button>
-                <VBox VBox.vgrow="ALWAYS" />
-                <Label fx:id="usuarioLogadoLabel" text="Olá, Nome do Usuário" textFill="WHITE" />
-                <Button mnemonicParsing="false" onAction="#handleLogout" prefWidth="220.0" style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold;" text="Sair">
-                    <VBox.margin>
-                        <Insets top="10.0" />
-                    </VBox.margin>
-                </Button>
-            </children>
-            <padding>
-                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
-            </padding>
-        </VBox>
-    </left>
-    <center>
-        <VBox spacing="15.0" styleClass="content-area" BorderPane.alignment="CENTER">
-            <children>
-                <Label styleClass="content-title" text="Minhas tarefas" />
-                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
                     <children>
-                        <Button onAction="#handleNovaTarefa" styleClass="button-dashboard-secondary" text="+ Nova tarefa" />
-                        <TextField fx:id="filterField" prefHeight="35.0" prefWidth="250.0" promptText="Filtrar tarefas..." styleClass="search-field" />
-                        <MenuButton mnemonicParsing="false" prefHeight="35.0" style="-fx-background-color: #f0f0f0;" text="Prioridade">
-                            <items>
-                                <MenuItem mnemonicParsing="false" text="Baixa" />
-                                <MenuItem mnemonicParsing="false" text="Normal" />
-                                <MenuItem mnemonicParsing="false" text="Alta" />
-                            </items>
-                        </MenuButton>
-                        <Button onAction="#handleFilter" styleClass="button-dashboard-primary" text="Q Filtrar" />
+                        <Text styleClass="dashboard-title" text="Gerenciador de Tarefas" />
+                        <Text styleClass="dashboard-subtitle" text="Sistema de Distribuição Inteligente" />
+                    </children>
+                </VBox>
+                <HBox alignment="CENTER_RIGHT" spacing="20.0">
+                    <children>
+                        <VBox alignment="CENTER_RIGHT" spacing="2.0">
+                            <children>
+                                <Label fx:id="usuarioLogadoLabel" styleClass="user-welcome" text="Olá, Usuário" />
+                                <Label styleClass="user-subtitle" text="Bem-vindo de volta" />
+                            </children>
+                        </VBox>
+                        <Button mnemonicParsing="false" onAction="#handleLogout" styleClass="logout-button" text="Sair" />
                     </children>
                 </HBox>
-                <TableView fx:id="tabelaTarefas" VBox.vgrow="ALWAYS">
-                    <columns>
-                        <TableColumn fx:id="idCol" prefWidth="120.0" text="ID" />
-                        <TableColumn fx:id="tituloCol" prefWidth="180.0" text="Título" />
-                        <TableColumn fx:id="prioridadeCol" prefWidth="100.0" text="Prioridade" />
-                        <TableColumn fx:id="statusCol" prefWidth="100.0" text="Status" />
-                        <TableColumn fx:id="criadaEmCol" prefWidth="120.0" text="Criada em" />
-                        <TableColumn fx:id="terminadaEmCol" prefWidth="120.0" text="Terminada em" />
-                        <TableColumn fx:id="acoesCol" prefWidth="100.0" text="Ações" />
-                    </columns>
-                    <styleClass>
-                        <String fx:value="table-view" />
-                    </styleClass>
-                </TableView>
             </children>
-        </VBox>
+            <padding>
+                <Insets bottom="20.0" left="40.0" right="40.0" top="20.0" />
+            </padding>
+        </HBox>
+    </top>
+
+    <center>
+        <HBox spacing="0.0" BorderPane.alignment="CENTER">
+            <!-- Sidebar de Navegação -->
+            <VBox prefWidth="300.0" styleClass="modern-sidebar" HBox.hgrow="NEVER">
+                <children>
+                    <VBox spacing="15.0">
+                        <children>
+                            <Label styleClass="sidebar-title" text="Navegação" />
+                            <VBox spacing="8.0">
+                                <children>
+                                    <Button alignment="CENTER_LEFT" mnemonicParsing="false" prefHeight="50.0" prefWidth="260.0" styleClass="sidebar-button,sidebar-button-active" text="📋 Minhas Tarefas">
+                                        <graphic>
+                                            <Region prefHeight="20.0" prefWidth="20.0" />
+                                        </graphic>
+                                    </Button>
+                                    <Button alignment="CENTER_LEFT" mnemonicParsing="false" onAction="#handleRegistrarTarefa" prefHeight="50.0" prefWidth="260.0" styleClass="sidebar-button" text="➕ Registrar Tarefa">
+                                        <graphic>
+                                            <Region prefHeight="20.0" prefWidth="20.0" />
+                                        </graphic>
+                                    </Button>
+                                </children>
+                            </VBox>
+                        </children>
+                    </VBox>
+
+                    <!-- Estatísticas Quick -->
+                    <VBox spacing="15.0" VBox.vgrow="ALWAYS">
+                        <children>
+                            <Label styleClass="sidebar-title" text="Estatísticas Rápidas" />
+                            <VBox spacing="10.0">
+                                <children>
+                                    <HBox alignment="CENTER_LEFT" styleClass="stat-item">
+                                        <children>
+                                            <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                                                <children>
+                                                    <Label styleClass="stat-number" text="0" />
+                                                    <Label styleClass="stat-label" text="Em Execução" />
+                                                </children>
+                                            </VBox>
+                                            <Region prefHeight="30.0" prefWidth="5.0" styleClass="stat-indicator-running" />
+                                        </children>
+                                    </HBox>
+                                    <HBox alignment="CENTER_LEFT" styleClass="stat-item">
+                                        <children>
+                                            <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                                                <children>
+                                                    <Label styleClass="stat-number" text="0" />
+                                                    <Label styleClass="stat-label" text="Concluídas" />
+                                                </children>
+                                            </VBox>
+                                            <Region prefHeight="30.0" prefWidth="5.0" styleClass="stat-indicator-completed" />
+                                        </children>
+                                    </HBox>
+                                    <HBox alignment="CENTER_LEFT" styleClass="stat-item">
+                                        <children>
+                                            <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                                                <children>
+                                                    <Label styleClass="stat-number" text="0" />
+                                                    <Label styleClass="stat-label" text="Pendentes" />
+                                                </children>
+                                            </VBox>
+                                            <Region prefHeight="30.0" prefWidth="5.0" styleClass="stat-indicator-pending" />
+                                        </children>
+                                    </HBox>
+                                </children>
+                            </VBox>
+                        </children>
+                        <VBox.margin>
+                            <Insets top="30.0" />
+                        </VBox.margin>
+                    </VBox>
+                </children>
+                <padding>
+                    <Insets bottom="30.0" left="20.0" right="20.0" top="30.0" />
+                </padding>
+            </VBox>
+
+            <!-- Área de Conteúdo Principal -->
+            <VBox spacing="25.0" styleClass="main-content-area" HBox.hgrow="ALWAYS">
+                <children>
+                    <!-- Cabeçalho da Seção -->
+                    <HBox alignment="CENTER_LEFT">
+                        <children>
+                            <VBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                                <children>
+                                    <Label styleClass="section-title" text="Minhas Tarefas" />
+                                    <Label styleClass="section-subtitle" text="Gerencie e acompanhe o progresso das suas atividades" />
+                                </children>
+                            </VBox>
+                            <Button onAction="#handleNovaTarefa" styleClass="primary-action-button" text="➕ Nova Tarefa" />
+                        </children>
+                    </HBox>
+
+                    <!-- Barra de Filtros e Busca -->
+                    <HBox alignment="CENTER_LEFT" spacing="15.0" styleClass="filter-bar">
+                        <children>
+                            <VBox spacing="5.0">
+                                <children>
+                                    <Label styleClass="filter-label" text="Buscar tarefas" />
+                                    <TextField fx:id="filterField" prefHeight="40.0" prefWidth="300.0" promptText="Digite para filtrar..." styleClass="search-input" />
+                                </children>
+                            </VBox>
+                            <VBox spacing="5.0">
+                                <children>
+                                    <Label styleClass="filter-label" text="Prioridade" />
+                                    <MenuButton mnemonicParsing="false" prefHeight="40.0" prefWidth="150.0" styleClass="filter-dropdown" text="Todas">
+                                        <items>
+                                            <MenuItem mnemonicParsing="false" text="Todas" />
+                                            <MenuItem mnemonicParsing="false" text="Alta" />
+                                            <MenuItem mnemonicParsing="false" text="Normal" />
+                                            <MenuItem mnemonicParsing="false" text="Baixa" />
+                                        </items>
+                                    </MenuButton>
+                                </children>
+                            </VBox>
+                            <VBox spacing="5.0">
+                                <children>
+                                    <Label styleClass="filter-label" text="Status" />
+                                    <MenuButton mnemonicParsing="false" prefHeight="40.0" prefWidth="150.0" styleClass="filter-dropdown" text="Todos">
+                                        <items>
+                                            <MenuItem mnemonicParsing="false" text="Todos" />
+                                            <MenuItem mnemonicParsing="false" text="Pendente" />
+                                            <MenuItem mnemonicParsing="false" text="Em Execução" />
+                                            <MenuItem mnemonicParsing="false" text="Concluída" />
+                                        </items>
+                                    </MenuButton>
+                                </children>
+                            </VBox>
+                            <VBox alignment="BOTTOM_LEFT" spacing="5.0">
+                                <children>
+                                    <Label text=" " />
+                                    <Button onAction="#handleFilter" prefHeight="40.0" styleClass="filter-button" text="🔍 Filtrar" />
+                                </children>
+                            </VBox>
+                        </children>
+                        <padding>
+                            <Insets bottom="10.0" left="15.0" right="15.0" top="10.0" />
+                        </padding>
+                    </HBox>
+
+                    <!-- Tabela de Tarefas -->
+                    <TableView fx:id="tabelaTarefas" styleClass="modern-table" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="idCol" maxWidth="120.0" minWidth="120.0" prefWidth="120.0" text="ID" />
+                            <TableColumn fx:id="tituloCol" minWidth="200.0" prefWidth="250.0" text="Título" />
+                            <TableColumn fx:id="prioridadeCol" maxWidth="100.0" minWidth="100.0" prefWidth="100.0" text="Prioridade" />
+                            <TableColumn fx:id="statusCol" maxWidth="120.0" minWidth="120.0" prefWidth="120.0" text="Status" />
+                            <TableColumn fx:id="criadaEmCol" maxWidth="130.0" minWidth="130.0" prefWidth="130.0" text="Criada em" />
+                            <TableColumn fx:id="terminadaEmCol" maxWidth="130.0" minWidth="130.0" prefWidth="130.0" text="Concluída em" />
+                            <TableColumn fx:id="acoesCol" maxWidth="120.0" minWidth="120.0" prefWidth="120.0" text="Ações" />
+                        </columns>
+                    </TableView>
+                </children>
+                <padding>
+                    <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
+                </padding>
+            </VBox>
+        </HBox>
     </center>
-    <padding>
-        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-    </padding>
 </BorderPane>
