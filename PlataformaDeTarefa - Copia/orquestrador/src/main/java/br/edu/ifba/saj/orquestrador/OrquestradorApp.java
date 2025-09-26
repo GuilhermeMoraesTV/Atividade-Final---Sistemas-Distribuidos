@@ -1,6 +1,6 @@
-package br.edu.ifba.saj.monitor;
+package br.edu.ifba.saj.orquestrador;
 
-import br.edu.ifba.saj.monitor.controller.MonitorController;
+import br.edu.ifba.saj.orquestrador.controller.OrquestradorController;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -8,26 +8,25 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-public class MonitorApp extends Application {
+public class OrquestradorApp extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // CORREÇÃO: Caminho correto para o FXML (usando pontos em vez de barras)
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/br.edu.ifba.saj.monitor/view/MonitorView.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/br.edu.ifba.saj.orquestrador/OrquestradorView.fxml"));
         Parent root = loader.load();
 
         Scene scene = new Scene(root);
-        // CORREÇÃO: Caminho correto para o CSS
-        scene.getStylesheets().add(getClass().getResource("/br.edu.ifba.saj.monitor/css/styles.css").toExternalForm());
+        scene.getStylesheets().add(getClass().getResource("/br.edu.ifba.saj/orquestrador/css/styles.css").toExternalForm());
 
-        primaryStage.setTitle("Monitor do Sistema");
+        primaryStage.setTitle("Dashboard do Orquestrador");
         primaryStage.setScene(scene);
         primaryStage.show();
 
         primaryStage.setOnCloseRequest(e -> {
-            MonitorController controller = loader.getController();
+            OrquestradorController controller = loader.getController();
             controller.shutdown();
             Platform.exit();
+            System.exit(0);
         });
     }
 

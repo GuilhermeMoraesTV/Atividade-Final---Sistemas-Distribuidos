@@ -33,7 +33,7 @@ public class OrquestradorServidor {
     }
 
     public static class AutenticacaoImpl extends AutenticacaoGrpc.AutenticacaoImplBase {
-        static final Map<String, String> usuariosDb = new ConcurrentHashMap<>(Map.of("user1", "pass1", "user2", "pass2"));
+        public static final Map<String, String> usuariosDb = new ConcurrentHashMap<>(Map.of("user1", "pass1", "user2", "pass2"));
         private static final Map<String, String> sessoesAtivas = new ConcurrentHashMap<>();
 
         @Override
