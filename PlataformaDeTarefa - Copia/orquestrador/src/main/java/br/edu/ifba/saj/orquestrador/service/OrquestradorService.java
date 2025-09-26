@@ -7,6 +7,7 @@ import br.edu.ifba.saj.orquestrador.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -16,20 +17,46 @@ public class OrquestradorService {
     private final Map<String, Tarefa> bancoDeTarefas = new java.util.concurrent.ConcurrentHashMap<>();
     private final AtomicLong lamportClock = new AtomicLong(0);
 
+    // CORREÇÃO: Callback para logs
+    private Consumer<String> logCallback = null;
+
+    public void setLogCallback(Consumer<String> callback) {
+        this.logCallback = callback;
+    }
+
+    private void log(String mensagem) {
+        if (logCallback != null) {
+            logCallback.accept(mensagem);
+        }
+        System.out.println(mensagem); // Manter log no console também
+    }
+
     public void iniciarServidor() {
         if (!servidorAtivo) {
             // Inicia o servidor em uma thread separada
             new Thread(() -> {
                 try {
+                    log("Iniciando serviços do orquestrador...");
+
+                    // CORREÇÃO: Configurar callbacks de logging
+                    OrquestradorCore.setLogCallback(this::log);
+
+                    // CORREÇÃO: Passar referências dos mapas reais
                     OrquestradorCore.tentarIniciarModoPrimario(workersAtivos, bancoDeTarefas, lamportClock);
+
                     servidorAtivo = true;
+                    log("✅ Orquestrador ATIVO na porta 50050");
+                    log("📡 Aguardando conexões de workers e clientes");
+                    log("🔄 Sistema pronto para processar tarefas");
+
                 } catch (Exception e) {
+                    log("❌ ERRO ao iniciar servidor: " + e.getMessage());
                     throw new RuntimeException("Erro ao iniciar servidor", e);
                 }
             }).start();
 
-            // Simula alguns dados iniciais para demonstração
-            simularDadosIniciais();
+            // CORREÇÃO: Remover dados simulados - deixar sistema limpo
+            log("🧹 Sistema iniciado limpo (sem dados simulados)");
         }
     }
 
@@ -37,6 +64,7 @@ public class OrquestradorService {
         servidorAtivo = false;
         workersAtivos.clear();
         bancoDeTarefas.clear();
+        log("Servidor parado e dados limpos");
     }
 
     public boolean isServidorAtivo() {
@@ -80,14 +108,34 @@ public class OrquestradorService {
 
     public List<TarefaModel> getTarefas() {
         return bancoDeTarefas.values().stream()
-                .map(t -> new TarefaModel(
-                        t.getId(),
-                        t.getDados(),
-                        t.getStatus().toString(),
-                        t.getWorkerIdAtual() != null ? t.getWorkerIdAtual() : "N/A",
-                        t.getUsuarioId()
-                ))
+                .map(t -> {
+                    // CORREÇÃO: Formatar dados da tarefa corretamente
+                    String descricaoFormatada = formatarDescricaoTarefa(t.getDados());
+
+                    return new TarefaModel(
+                            t.getId(),
+                            descricaoFormatada,
+                            t.getStatus().toString(),
+                            t.getWorkerIdAtual() != null ? t.getWorkerIdAtual() : "N/A",
+                            t.getUsuarioId()
+                    );
+                })
+                .sorted((t1, t2) -> t2.getId().compareTo(t1.getId())) // Mais recente primeiro
                 .collect(Collectors.toList());
+    }
+
+    // CORREÇÃO: Método para formatar descrição das tarefas
+    private String formatarDescricaoTarefa(String dados) {
+        if (dados == null || dados.trim().isEmpty()) {
+            return "Tarefa sem descrição";
+        }
+
+        // Se for muito longo, truncar
+        if (dados.length() > 100) {
+            return dados.substring(0, 97) + "...";
+        }
+
+        return dados;
     }
 
     public List<UsuarioModel> getUsuarios() {
@@ -97,7 +145,7 @@ public class OrquestradorService {
                             .filter(t -> usuario.equals(t.getUsuarioId()))
                             .count();
 
-                    return new UsuarioModel(usuario, "CONECTADO", (int) totalTarefas);
+                    return new UsuarioModel(usuario, "REGISTRADO", (int) totalTarefas);
                 })
                 .collect(Collectors.toList());
     }
@@ -125,27 +173,8 @@ public class OrquestradorService {
         return dateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
     }
 
-    private void simularDadosIniciais() {
-        // Simula alguns workers ativos
-        workersAtivos.put("localhost:50051", System.currentTimeMillis());
-        workersAtivos.put("localhost:50052", System.currentTimeMillis() - 5000);
-
-        // Simula algumas tarefas
-        Tarefa tarefa1 = new Tarefa("task-001", "Processamento de dados", "user1");
-        tarefa1.setStatus(StatusTarefa.EXECUTANDO);
-        tarefa1.setWorkerIdAtual("localhost:50051");
-        bancoDeTarefas.put(tarefa1.getId(), tarefa1);
-
-        Tarefa tarefa2 = new Tarefa("task-002", "Análise de logs", "user2");
-        tarefa2.setStatus(StatusTarefa.AGUARDANDO);
-        bancoDeTarefas.put(tarefa2.getId(), tarefa2);
-
-        Tarefa tarefa3 = new Tarefa("task-003", "Backup de arquivos", "user1");
-        tarefa3.setStatus(StatusTarefa.CONCLUIDA);
-        bancoDeTarefas.put(tarefa3.getId(), tarefa3);
-    }
-
     public void shutdown() {
         pararServidor();
+        log("OrquestradorService desligado");
     }
 }

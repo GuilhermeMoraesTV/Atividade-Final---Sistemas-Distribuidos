@@ -12,6 +12,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.chart.PieChart;
 import javafx.concurrent.Task;
+import java.util.Map;
 
 public class OrquestradorController {
     @FXML private Label statusServidorLabel;
@@ -50,6 +51,14 @@ public class OrquestradorController {
     private final ObservableList<TarefaModel> tarefasData = FXCollections.observableArrayList();
     private final ObservableList<UsuarioModel> usuariosData = FXCollections.observableArrayList();
 
+    // CORREÇÃO: Dados fixos do gráfico para evitar mudança de cores
+    private final ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(
+            new PieChart.Data("Aguardando", 0),
+            new PieChart.Data("Executando", 0),
+            new PieChart.Data("Concluída", 0),
+            new PieChart.Data("Falha", 0)
+    );
+
     private Task<Void> servidorTask;
     private Task<Void> atualizadorTask;
 
@@ -71,12 +80,17 @@ public class OrquestradorController {
         workerUltimoHeartbeatCol.setCellValueFactory(new PropertyValueFactory<>("ultimoHeartbeat"));
         tabelaWorkers.setItems(workersData);
 
-        // Configurar tabela de Tarefas
+        // Configurar tabela de Tarefas - CORREÇÃO: Larguras das colunas
         tarefaIdCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        tarefaIdCol.setPrefWidth(120);
         tarefaDescCol.setCellValueFactory(new PropertyValueFactory<>("descricao"));
+        tarefaDescCol.setPrefWidth(300); // AUMENTAR largura para descrição
         tarefaStatusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        tarefaStatusCol.setPrefWidth(100);
         tarefaWorkerCol.setCellValueFactory(new PropertyValueFactory<>("worker"));
+        tarefaWorkerCol.setPrefWidth(150);
         tarefaUsuarioCol.setCellValueFactory(new PropertyValueFactory<>("usuario"));
+        tarefaUsuarioCol.setPrefWidth(100);
         tabelaTarefas.setItems(tarefasData);
 
         // Configurar tabela de Usuários
@@ -88,6 +102,10 @@ public class OrquestradorController {
 
     private void configurarGrafico() {
         graficoStatusTarefas.setTitle("Status das Tarefas");
+        // CORREÇÃO: Definir dados fixos uma única vez
+        graficoStatusTarefas.setData(pieChartData);
+        graficoStatusTarefas.setLegendVisible(true);
+        graficoStatusTarefas.setLabelsVisible(true);
         atualizarGrafico();
     }
 
@@ -124,14 +142,11 @@ public class OrquestradorController {
     private void atualizarGrafico() {
         var statusCount = orquestradorService.getStatusTarefasCount();
 
-        ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(
-                new PieChart.Data("Aguardando", statusCount.getOrDefault("AGUARDANDO", 0)),
-                new PieChart.Data("Executando", statusCount.getOrDefault("EXECUTANDO", 0)),
-                new PieChart.Data("Concluída", statusCount.getOrDefault("CONCLUIDA", 0)),
-                new PieChart.Data("Falha", statusCount.getOrDefault("FALHA", 0))
-        );
-
-        graficoStatusTarefas.setData(pieChartData);
+        // CORREÇÃO: Apenas atualizar os valores, não recriar o gráfico
+        pieChartData.get(0).setPieValue(statusCount.getOrDefault("AGUARDANDO", 0));
+        pieChartData.get(1).setPieValue(statusCount.getOrDefault("EXECUTANDO", 0));
+        pieChartData.get(2).setPieValue(statusCount.getOrDefault("CONCLUIDA", 0));
+        pieChartData.get(3).setPieValue(statusCount.getOrDefault("FALHA", 0));
     }
 
     private void iniciarAtualizacaoAutomatica() {
@@ -164,6 +179,10 @@ public class OrquestradorController {
             protected Void call() throws Exception {
                 try {
                     Platform.runLater(() -> adicionarLog("Iniciando servidor do orquestrador..."));
+
+                    // CORREÇÃO: Interceptar logs do servidor
+                    orquestradorService.setLogCallback(OrquestradorController.this::adicionarLog);
+
                     orquestradorService.iniciarServidor();
                     Platform.runLater(() -> {
                         adicionarLog("Servidor iniciado com sucesso na porta 50050!");
@@ -211,7 +230,7 @@ public class OrquestradorController {
         atualizarInterface();
     }
 
-    private void adicionarLog(String mensagem) {
+    public void adicionarLog(String mensagem) {
         Platform.runLater(() -> {
             String timestamp = java.time.LocalDateTime.now().format(
                     java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")

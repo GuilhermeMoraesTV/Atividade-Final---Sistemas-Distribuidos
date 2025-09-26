@@ -7,19 +7,13 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-import com.google.protobuf.Empty;
-import br.edu.ifba.saj.protocolo.EstadoGeral;
-import br.edu.ifba.saj.protocolo.WorkerInfo;
-import br.edu.ifba.saj.protocolo.TarefaInfo;
-import br.edu.ifba.saj.protocolo.MonitoramentoGrpc;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
-
-import static br.edu.ifba.saj.orquestrador.OrquestradorServidor.AutenticacaoImpl.usuariosDb;
+import java.util.function.Consumer;
 
 public class OrquestradorServidor {
 
@@ -35,6 +29,10 @@ public class OrquestradorServidor {
     public static class AutenticacaoImpl extends AutenticacaoGrpc.AutenticacaoImplBase {
         public static final Map<String, String> usuariosDb = new ConcurrentHashMap<>(Map.of("user1", "pass1", "user2", "pass2"));
         private static final Map<String, String> sessoesAtivas = new ConcurrentHashMap<>();
+        private static Consumer<String> logCallback = null;
+
+        public static void setLogCallback(Consumer<String> callback) { logCallback = callback; }
+        private static void log(String msg) { if (logCallback != null) logCallback.accept(msg); System.out.println(msg); }
 
         @Override
         public void registrar(RegistroRequest request, StreamObserver<RegistroResponse> responseObserver) {
@@ -43,16 +41,15 @@ public class OrquestradorServidor {
             RegistroResponse.Builder resposta = RegistroResponse.newBuilder();
 
             if (usuariosDb.putIfAbsent(usuario, senha) == null) {
-                System.out.println("Novo usuário registrado com sucesso: " + usuario);
+                log("Novo usuário registrado: " + usuario);
                 resposta.setSucesso(true).setMensagem("Usuário registrado com sucesso!");
             } else {
-                System.err.println("Tentativa de registrar usuário existente: " + usuario);
+                log("Tentativa de registrar usuário existente: " + usuario);
                 resposta.setSucesso(false).setMensagem("Este nome de usuário já existe.");
             }
             responseObserver.onNext(resposta.build());
             responseObserver.onCompleted();
         }
-
 
         @Override
         public void login(LoginRequest request, StreamObserver<LoginResponse> responseObserver) {
@@ -61,15 +58,16 @@ public class OrquestradorServidor {
             if (usuariosDb.containsKey(usuario) && usuariosDb.get(usuario).equals(senha)) {
                 String token = UUID.randomUUID().toString();
                 sessoesAtivas.put(token, usuario);
-                System.out.println("Usuário '" + usuario + "' logado com sucesso. Token: " + token);
+                log("Login bem-sucedido - Usuário: " + usuario + " | Token: " + token.substring(0, 8) + "...");
                 LoginResponse response = LoginResponse.newBuilder().setTokenSessao(token).build();
                 responseObserver.onNext(response);
                 responseObserver.onCompleted();
             } else {
-                System.err.println("Tentativa de login falhou para o usuário: " + usuario);
+                log("FALHA no login - Usuário: " + usuario);
                 responseObserver.onError(Status.UNAUTHENTICATED.withDescription("Usuário ou senha inválidos").asRuntimeException());
             }
         }
+
         public static String validarToken(String token) {
             return sessoesAtivas.get(token);
         }
@@ -79,50 +77,72 @@ public class OrquestradorServidor {
         private final List<StreamObserver<EstadoGeral>> monitorObservers = Collections.synchronizedList(new ArrayList<>());
         private final Map<String, Long> workersAtivos;
         private final Map<String, Tarefa> bancoDeTarefas;
+        private static Consumer<String> logCallback = null;
 
         public MonitoramentoImpl(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas) {
             this.workersAtivos = workersAtivos;
             this.bancoDeTarefas = bancoDeTarefas;
         }
 
+        public void setLogCallback(Consumer<String> callback) { logCallback = callback; }
+        private void log(String msg) { if (logCallback != null) logCallback.accept(msg); System.out.println(msg); }
+
         @Override
         public void inscreverParaEstadoGeral(Empty request, StreamObserver<EstadoGeral> responseObserver) {
-            System.out.println("Novo monitor conectado ao sistema.");
+            log("Novo monitor conectado ao sistema");
             monitorObservers.add(responseObserver);
         }
 
         public void enviarAtualizacaoGeral() {
             if (monitorObservers.isEmpty()) return;
+
             EstadoGeral.Builder estadoBuilder = EstadoGeral.newBuilder();
             workersAtivos.forEach((id, timestamp) -> {
-                long tarefasNoWorker = bancoDeTarefas.values().stream().filter(t -> id.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.EXECUTANDO).count();
-                estadoBuilder.addWorkers(WorkerInfo.newBuilder().setWorkerId(id).setStatus("ATIVO").setTarefasExecutando((int) tarefasNoWorker).build());
+                long tarefasNoWorker = bancoDeTarefas.values().stream()
+                        .filter(t -> id.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.EXECUTANDO)
+                        .count();
+                estadoBuilder.addWorkers(WorkerInfo.newBuilder()
+                        .setWorkerId(id).setStatus("ATIVO")
+                        .setTarefasExecutando((int) tarefasNoWorker).build());
             });
+
             bancoDeTarefas.values().forEach(tarefa -> {
-                estadoBuilder.addTarefas(TarefaInfo.newBuilder().setId(tarefa.getId()).setDescricao(tarefa.getDados()).setStatus(tarefa.getStatus().toString()).setWorkerId(tarefa.getWorkerIdAtual() != null ? tarefa.getWorkerIdAtual() : "N/A").build());
+                estadoBuilder.addTarefas(TarefaInfo.newBuilder()
+                        .setId(tarefa.getId())
+                        .setDescricao(tarefa.getDados())
+                        .setStatus(tarefa.getStatus().toString())
+                        .setWorkerId(tarefa.getWorkerIdAtual() != null ? tarefa.getWorkerIdAtual() : "N/A")
+                        .build());
             });
+
             estadoBuilder.setOrquestradorAtivoId("Principal (localhost:50050)");
+
             new ArrayList<>(monitorObservers).forEach(observer -> {
-                try { observer.onNext(estadoBuilder.build()); } catch (Exception e) { monitorObservers.remove(observer); }
+                try { observer.onNext(estadoBuilder.build()); }
+                catch (Exception e) {
+                    monitorObservers.remove(observer);
+                    log("Monitor desconectado: " + e.getMessage());
+                }
             });
         }
     }
 
     public static class GerenciadorTarefasImpl extends GerenciadorTarefasGrpc.GerenciadorTarefasImplBase {
-
         private final Map<String, Long> workersAtivos;
         private final Map<String, Tarefa> bancoDeTarefas;
         private final AtomicLong lamportClock;
         private final AtomicInteger proximoWorkerIndex = new AtomicInteger(0);
-
-        // MELHORIA: Mapeia um usuário ao seu canal de notificação para garantir privacidade.
         private final Map<String, StreamObserver<TarefaInfo>> inscritosPorUsuario = new ConcurrentHashMap<>();
+        private static Consumer<String> logCallback = null;
 
         public GerenciadorTarefasImpl(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas, AtomicLong lamportClock) {
             this.workersAtivos = workersAtivos;
             this.bancoDeTarefas = bancoDeTarefas;
             this.lamportClock = lamportClock;
         }
+
+        public void setLogCallback(Consumer<String> callback) { logCallback = callback; }
+        private void log(String msg) { if (logCallback != null) logCallback.accept(msg); System.out.println(msg); }
 
         @Override
         public void inscreverParaAtualizacoes(InscricaoRequest request, StreamObserver<TarefaInfo> responseObserver) {
@@ -131,17 +151,13 @@ public class OrquestradorServidor {
                 responseObserver.onError(Status.UNAUTHENTICATED.asRuntimeException());
                 return;
             }
-            System.out.println("Usuário '" + usuario + "' inscrito para receber atualizações.");
-            // MELHORIA: Associa o observer ao usuário específico.
+            log("Cliente inscrito para atualizações: " + usuario);
             inscritosPorUsuario.put(usuario, responseObserver);
         }
 
-        // MELHORIA: Notifica apenas o usuário dono da tarefa.
         private void notificarCliente(Tarefa tarefa) {
             StreamObserver<TarefaInfo> observer = inscritosPorUsuario.get(tarefa.getUsuarioId());
-            if (observer == null) {
-                return; // Usuário não está inscrito ou já se desconectou.
-            }
+            if (observer == null) return;
 
             TarefaInfo info = TarefaInfo.newBuilder()
                     .setId(tarefa.getId())
@@ -151,10 +167,10 @@ public class OrquestradorServidor {
                     .build();
             try {
                 observer.onNext(info);
+                log("Notificação enviada para " + tarefa.getUsuarioId() + " - Tarefa: " + tarefa.getId() + " | Status: " + tarefa.getStatus());
             } catch (Exception e) {
-                // Se der erro ao enviar (ex: cliente desconectou), remove o observer.
                 inscritosPorUsuario.remove(tarefa.getUsuarioId());
-                System.err.println("Removendo observer inativo para o usuário " + tarefa.getUsuarioId() + ": " + e.getMessage());
+                log("Cliente desconectado: " + tarefa.getUsuarioId() + " - " + e.getMessage());
             }
         }
 
@@ -162,10 +178,14 @@ public class OrquestradorServidor {
         public void enviarHeartbeat(HeartbeatRequest request, StreamObserver<HeartbeatResponse> responseObserver) {
             lamportClock.updateAndGet(current -> Math.max(current, request.getLamportTimestamp()) + 1);
             String workerId = request.getWorkerId();
-            if (!workersAtivos.containsKey(workerId)) {
-                System.out.println("[Clock: " + lamportClock.get() + "] Novo worker registrado: " + workerId);
-            }
+
+            boolean novoWorker = !workersAtivos.containsKey(workerId);
             workersAtivos.put(workerId, System.currentTimeMillis());
+
+            if (novoWorker) {
+                log("[Clock: " + lamportClock.get() + "] NOVO WORKER conectado: " + workerId);
+            }
+
             responseObserver.onNext(HeartbeatResponse.newBuilder().setRecebido(true).build());
             responseObserver.onCompleted();
         }
@@ -177,15 +197,19 @@ public class OrquestradorServidor {
                 responseObserver.onError(Status.UNAUTHENTICATED.withDescription("Token de sessão inválido.").asRuntimeException());
                 return;
             }
+
             lamportClock.updateAndGet(current -> Math.max(current, request.getLamportTimestamp()) + 1);
-            System.out.println("[Clock: " + lamportClock.get() + "] Orquestrador recebeu tarefa do usuário: " + usuario);
 
             String tarefaId = UUID.randomUUID().toString();
             Tarefa novaTarefa = new Tarefa(tarefaId, request.getDadosTarefa(), usuario);
             bancoDeTarefas.put(tarefaId, novaTarefa);
 
-            notificarCliente(novaTarefa); // Notifica o status AGUARDANDO
+            log("[Clock: " + lamportClock.get() + "] NOVA TAREFA recebida de " + usuario);
+            log("  ↳ ID: " + tarefaId);
+            log("  ↳ Descrição: " + request.getDadosTarefa());
+            log("  ↳ Status: AGUARDANDO");
 
+            notificarCliente(novaTarefa);
             distribuirTarefa(novaTarefa, responseObserver);
         }
 
@@ -193,11 +217,15 @@ public class OrquestradorServidor {
         public void finalizarTarefa(FinalizarTarefaRequest request, StreamObserver<FinalizarTarefaResponse> responseObserver) {
             lamportClock.updateAndGet(current -> Math.max(current, request.getLamportTimestamp()) + 1);
             Tarefa tarefa = bancoDeTarefas.get(request.getTarefaId());
+
             if (tarefa != null && tarefa.getStatus() != StatusTarefa.CONCLUIDA) {
                 tarefa.setStatus(StatusTarefa.CONCLUIDA);
-                System.out.println("[Clock: " + lamportClock.get() + "] Tarefa " + tarefa.getId() + " finalizada pelo worker " + request.getWorkerId());
-                notificarCliente(tarefa); // Notifica o status CONCLUIDA
+                log("[Clock: " + lamportClock.get() + "] TAREFA CONCLUÍDA: " + tarefa.getId() + " pelo worker " + request.getWorkerId());
+                log("  ↳ Descrição: " + tarefa.getDados());
+                log("  ↳ Usuário: " + tarefa.getUsuarioId());
+                notificarCliente(tarefa);
             }
+
             responseObserver.onNext(FinalizarTarefaResponse.newBuilder().setSucesso(true).build());
             responseObserver.onCompleted();
         }
@@ -205,7 +233,7 @@ public class OrquestradorServidor {
         public void distribuirTarefa(Tarefa tarefa, StreamObserver<SubmeterTarefaResponse> responseObserver) {
             String workerSelecionado = selecionarProximoWorker();
             if (workerSelecionado == null) {
-                System.err.println("Nenhum worker disponível para a tarefa " + tarefa.getId() + ". Ficará em espera.");
+                log("NENHUM WORKER DISPONÍVEL para a tarefa " + tarefa.getId() + " - ficará em espera");
                 if (responseObserver != null) {
                     responseObserver.onError(new StatusRuntimeException(Status.UNAVAILABLE.withDescription("Nenhum worker disponível. A tarefa foi enfileirada.")));
                 }
@@ -213,20 +241,16 @@ public class OrquestradorServidor {
             }
 
             long timestamp = lamportClock.incrementAndGet();
-            System.out.println("[Clock: " + timestamp + "] Distribuindo tarefa " + tarefa.getId() + " para o worker: " + workerSelecionado);
+            log("[Clock: " + timestamp + "] DISTRIBUINDO tarefa " + tarefa.getId() + " para worker: " + workerSelecionado);
 
-            // ==================================================================
-            // CORREÇÃO DA CONDIÇÃO DE CORRIDA
-            // 1. Mude o status para EXECUTANDO e notifique ANTES de chamar o worker.
-            // ==================================================================
             tarefa.setStatus(StatusTarefa.EXECUTANDO);
             tarefa.setWorkerIdAtual(workerSelecionado);
-            notificarCliente(tarefa); // Notifica o status EXECUTANDO
+            notificarCliente(tarefa);
 
             ManagedChannel channel = ManagedChannelBuilder.forTarget(workerSelecionado).usePlaintext().build();
             try {
                 GerenciadorTarefasGrpc.GerenciadorTarefasBlockingStub workerStub = GerenciadorTarefasGrpc.newBlockingStub(channel)
-                        .withDeadlineAfter(30, TimeUnit.SECONDS); // Aumentei o deadline para acomodar o sleep do worker
+                        .withDeadlineAfter(30, TimeUnit.SECONDS);
 
                 SubmeterTarefaRequest requestParaWorker = SubmeterTarefaRequest.newBuilder()
                         .setDadosTarefa(tarefa.getDados())
@@ -234,9 +258,8 @@ public class OrquestradorServidor {
                         .setLamportTimestamp(timestamp)
                         .build();
 
-                // 2. A chamada bloqueante agora acontece DEPOIS que o status já foi atualizado.
-                // O worker irá processar e chamar 'finalizarTarefa' em uma thread separada.
                 workerStub.submeterTarefa(requestParaWorker);
+                log("Tarefa " + tarefa.getId() + " ENVIADA com sucesso para " + workerSelecionado);
 
                 if (responseObserver != null) {
                     SubmeterTarefaResponse response = SubmeterTarefaResponse.newBuilder()
@@ -247,17 +270,16 @@ public class OrquestradorServidor {
                     responseObserver.onCompleted();
                 }
             } catch (Exception e) {
-                System.err.println("Falha ao enviar tarefa " + tarefa.getId() + " para " + workerSelecionado + ". Reagendando. Erro: " + e.getMessage());
-                // Se a comunicação com o worker falhar, reverta o status.
+                log("ERRO ao enviar tarefa " + tarefa.getId() + " para " + workerSelecionado + " - " + e.getMessage());
                 tarefa.setStatus(StatusTarefa.AGUARDANDO);
                 tarefa.setWorkerIdAtual(null);
-                notificarCliente(tarefa); // Notifica que voltou para AGUARDANDO
+                notificarCliente(tarefa);
                 workersAtivos.remove(workerSelecionado);
+
                 if (responseObserver != null) {
                     responseObserver.onError(e);
                 }
             } finally {
-                // Use shutdown() para um encerramento gracioso, permitindo que chamadas em andamento terminem.
                 channel.shutdown();
             }
         }
