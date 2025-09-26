@@ -3,9 +3,8 @@ package br.edu.ifba.saj.orquestrador.controller;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
-import javafx.animation.Timeline;
 import javafx.animation.ScaleTransition;
-
+import javafx.animation.Timeline;
 import br.edu.ifba.saj.orquestrador.model.LogEntry;
 import br.edu.ifba.saj.orquestrador.model.TarefaModel;
 import br.edu.ifba.saj.orquestrador.model.WorkerModel;
@@ -20,11 +19,11 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.chart.PieChart;
 import javafx.concurrent.Task;
-import javafx.util.Duration;
 import javafx.scene.layout.HBox;
-
+import javafx.util.Duration;
 
 public class OrquestradorController {
+    // ... (declarações @FXML)
     @FXML private Label statusServidorLabel;
     @FXML private Label totalWorkersLabel;
     @FXML private Label totalTarefasLabel;
@@ -50,14 +49,18 @@ public class OrquestradorController {
     @FXML private TableColumn<UsuarioModel, Integer> usuarioTarefasCol;
 
     @FXML private PieChart graficoStatusTarefas;
-    @FXML private ProgressBar syncProgressBar;
-    @FXML private HBox syncStatusBox;
+
     @FXML private HBox healthCheckStatusBox;
+    @FXML private HBox syncStatusBox;
+    @FXML private ProgressBar syncProgressBar;
 
     @FXML private ListView<LogEntry> logListView;
     @FXML private Button iniciarServidorBtn;
     @FXML private Button pararServidorBtn;
     @FXML private Button limparLogBtn;
+
+    // Flag para controlar o modo de operação
+    private boolean isFailoverMode = false;
 
     private final OrquestradorService orquestradorService = new OrquestradorService();
     private final ObservableList<WorkerModel> workersData = FXCollections.observableArrayList();
@@ -75,16 +78,34 @@ public class OrquestradorController {
     private Task<Void> servidorTask;
     private Task<Void> atualizadorTask;
 
+    // Método para a classe App definir o modo antes de qualquer coisa
+    public void setFailoverMode(boolean isFailover) {
+        this.isFailoverMode = isFailover;
+    }
+
     @FXML
     public void initialize() {
+        // A inicialização agora só configura os componentes
         configurarTabelas();
         configurarGrafico();
         configurarLog();
         atualizarInterface();
         iniciarAtualizacaoAutomatica();
-        adicionarLog("Interface do orquestrador inicializada.");
     }
 
+    // NOVO MÉTODO: Aplica a lógica depois que o modo já foi definido
+    public void setupApplicationMode() {
+        if (isFailoverMode) {
+            Platform.runLater(() -> {
+                adicionarLog("FAILOVER DETECTADO! Esta GUI está monitorando o orquestrador de backup promovido.");
+                iniciarServidorBtn.setText("Monitorando");
+                iniciarServidorBtn.setDisable(true);
+                pararServidorBtn.setDisable(true);
+            });
+        } else {
+            adicionarLog("Interface do orquestrador inicializada em modo primário.");
+        }
+    }
     private void configurarTabelas() {
         workerIdCol.setCellValueFactory(new PropertyValueFactory<>("id"));
         workerStatusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
@@ -109,7 +130,6 @@ public class OrquestradorController {
         usuarioTarefasCol.setCellValueFactory(new PropertyValueFactory<>("totalTarefas"));
         tabelaUsuarios.setItems(usuariosData);
     }
-
     private void configurarGrafico() {
         graficoStatusTarefas.setTitle("Status das Tarefas");
         graficoStatusTarefas.setData(pieChartData);
@@ -117,13 +137,11 @@ public class OrquestradorController {
         graficoStatusTarefas.setLabelsVisible(true);
         atualizarGrafico();
     }
-
     private void configurarLog() {
         logListView.setItems(logData);
         logListView.setCellFactory(param -> new LogCardCell());
         adicionarLog("Log inicializado. Aguardando eventos...");
     }
-
     private void atualizarInterface() {
         Platform.runLater(() -> {
             boolean servidorAtivo = orquestradorService.isServidorAtivo();
@@ -155,7 +173,6 @@ public class OrquestradorController {
         pieChartData.get(2).setPieValue(statusCount.getOrDefault("CONCLUIDA", 0));
         pieChartData.get(3).setPieValue(statusCount.getOrDefault("FALHA", 0));
     }
-
     private void iniciarAtualizacaoAutomatica() {
         atualizadorTask = new Task<>() {
             @Override
@@ -179,11 +196,15 @@ public class OrquestradorController {
         atualizadorThread.start();
     }
 
-    // ==================================================================
-    // MÉTODO CORRIGIDO PARA ATIVAR A ANIMAÇÃO DA BARRA
-    // ==================================================================
+    // O restante do seu código permanece o mesmo...
+
     @FXML
     private void iniciarServidor() {
+        if (isFailoverMode) {
+            adicionarLog("Ação negada: A interface está em modo de monitoramento de failover.");
+            return;
+        }
+
         servidorTask = new Task<>() {
             @Override
             protected Void call() throws Exception {
@@ -191,7 +212,6 @@ public class OrquestradorController {
                     Platform.runLater(() -> adicionarLog("Iniciando servidor do orquestrador..."));
 
                     orquestradorService.setSyncCallback(OrquestradorController.this::dispararAnimacaoSync);
-                    // CONECTAR O NOVO CALLBACK DE HEALTH CHECK
                     orquestradorService.setHealthCheckCallback(OrquestradorController.this::dispararAnimacaoHealthCheck);
 
                     orquestradorService.setLogCallback(OrquestradorController.this::adicionarLog);
@@ -210,15 +230,11 @@ public class OrquestradorController {
                 return null;
             }
         };
-
-        Thread thread = new Thread(servidorTask);
-        thread.setDaemon(true);
-        thread.start();
+        new Thread(servidorTask).start();
     }
 
     private void dispararAnimacaoHealthCheck() {
         Platform.runLater(() -> {
-            // Animação para mostrar e esconder o HBox
             FadeTransition fadeIn = new FadeTransition(Duration.millis(100), healthCheckStatusBox);
             fadeIn.setFromValue(0.0);
             fadeIn.setToValue(1.0);
@@ -226,16 +242,14 @@ public class OrquestradorController {
             FadeTransition fadeOut = new FadeTransition(Duration.millis(400), healthCheckStatusBox);
             fadeOut.setFromValue(1.0);
             fadeOut.setToValue(0.0);
-            fadeOut.setDelay(Duration.millis(700)); // Pequeno delay antes de sumir
+            fadeOut.setDelay(Duration.millis(700));
 
-            // Animação de pulso
             ScaleTransition scale = new ScaleTransition(Duration.millis(300), healthCheckStatusBox);
             scale.setFromX(1.0); scale.setFromY(1.0);
             scale.setToX(1.05); scale.setToY(1.05);
             scale.setCycleCount(2);
             scale.setAutoReverse(true);
 
-            // Orquestra as animações
             fadeIn.setOnFinished(e -> {
                 scale.play();
                 fadeOut.play();
@@ -246,13 +260,11 @@ public class OrquestradorController {
 
     private void dispararAnimacaoSync() {
         Platform.runLater(() -> {
-            // Animação de preenchimento da barra
             Timeline timeline = new Timeline(
                     new KeyFrame(Duration.ZERO, new KeyValue(syncProgressBar.progressProperty(), 0)),
                     new KeyFrame(Duration.seconds(0.5), new KeyValue(syncProgressBar.progressProperty(), 1))
             );
 
-            // Animação para mostrar e esconder o HBox (label + barra)
             FadeTransition fadeIn = new FadeTransition(Duration.seconds(0.2), syncStatusBox);
             fadeIn.setFromValue(0.0);
             fadeIn.setToValue(1.0);
@@ -261,7 +273,6 @@ public class OrquestradorController {
             fadeOut.setFromValue(1.0);
             fadeOut.setToValue(0.0);
 
-            // Ordem: 1. Mostra -> 2. Preenche a barra -> 3. Esconde
             fadeIn.setOnFinished(e -> timeline.play());
             timeline.setOnFinished(event -> fadeOut.play());
             fadeIn.play();
@@ -294,9 +305,6 @@ public class OrquestradorController {
         atualizarInterface();
     }
 
-    // ==================================================================
-    // LÓGICA DE ÍCONES E CORES APRIMORADA
-    // ==================================================================
     public void adicionarLog(String mensagem) {
         Platform.runLater(() -> {
             String timestamp = java.time.LocalDateTime.now().format(
@@ -307,7 +315,6 @@ public class OrquestradorController {
             String title = "Informação do Sistema";
             String details = mensagem;
 
-            // IGNORA LOGS DE BAIXO VALOR VISUAL
             if (mensagem.contains("Tarefas no sistema") || mensagem.startsWith("  ↳")) {
                 return;
             }
@@ -343,7 +350,7 @@ public class OrquestradorController {
                 level = LogEntry.LogLevel.SUCCESS;
                 title = "Novo Worker Conectado";
                 details = mensagem.split(":")[2].trim();
-            } else if (mensagem.contains("promovido a Primário")) {
+            } else if (mensagem.contains("promovido a Primário") || mensagem.contains("FAILOVER DETECTADO")) {
                 level = LogEntry.LogLevel.FAILOVER;
                 title = "Failover do Orquestrador";
                 details = "Backup assumiu o controle como primário.";

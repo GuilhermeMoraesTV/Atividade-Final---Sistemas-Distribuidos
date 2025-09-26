@@ -13,51 +13,30 @@ public class OrquestradorApp extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // Caminho correto baseado na estrutura de arquivos
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/br.edu.ifba.saj.orquestrador/view/OrquestradorView.fxml"));
         Parent root = loader.load();
+        OrquestradorController controller = loader.getController();
 
-        //  Configurar janela com tamanho adequado e responsiva
-        Scene scene = new Scene(root, 1200, 800); // Tamanho inicial menor
+        // 1. Define o modo (primário ou failover) no controlador
+        controller.setFailoverMode(OrquestradorBackup.IS_FAILOVER_MODE);
 
-        // Carregar CSS se disponível
+        // 2. Chama o novo método para aplicar a lógica correspondente ao modo
+        controller.setupApplicationMode();
+
+        Scene scene = new Scene(root, 1200, 800);
         try {
             scene.getStylesheets().add(getClass().getResource("/br.edu.ifba.saj.orquestrador/css/style.css").toExternalForm());
         } catch (Exception e) {
             System.out.println("CSS não encontrado, usando estilo padrão");
         }
 
-        //  Configurar propriedades da janela
         primaryStage.setTitle("Dashboard do Orquestrador - Sistema Distribuído");
         primaryStage.setScene(scene);
-
-        //  Configurar tamanhos mínimo e máximo
         primaryStage.setMinWidth(1000);
         primaryStage.setMinHeight(700);
-        primaryStage.setMaxWidth(1920);
-        primaryStage.setMaxHeight(1080);
-
-        //  Permitir redimensionamento
-        primaryStage.setResizable(true);
-
-        //  Centralizar na tela
-        primaryStage.centerOnScreen();
-
-        //  Não iniciar maximizado
-        primaryStage.setMaximized(false);
-
-        // Tentar adicionar ícone se disponível
-        try {
-            primaryStage.getIcons().add(new Image("/br.edu.ifba.saj.orquestrador/icon.png"));
-        } catch (Exception e) {
-            // Ícone não encontrado, continuar sem ele
-        }
-
         primaryStage.show();
 
-        // Configurar evento de fechamento
         primaryStage.setOnCloseRequest(e -> {
-            OrquestradorController controller = loader.getController();
             if (controller != null) {
                 controller.shutdown();
             }
