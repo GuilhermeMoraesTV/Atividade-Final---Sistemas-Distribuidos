@@ -1,9 +1,16 @@
 package br.edu.ifba.saj.orquestrador.controller;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
+
+import br.edu.ifba.saj.orquestrador.model.LogEntry;
 import br.edu.ifba.saj.orquestrador.model.TarefaModel;
 import br.edu.ifba.saj.orquestrador.model.WorkerModel;
 import br.edu.ifba.saj.orquestrador.model.UsuarioModel;
 import br.edu.ifba.saj.orquestrador.service.OrquestradorService;
+import br.edu.ifba.saj.orquestrador.view.LogCardCell;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -12,7 +19,8 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.chart.PieChart;
 import javafx.concurrent.Task;
-import java.util.Map;
+import javafx.util.Duration;
+
 
 public class OrquestradorController {
     @FXML private Label statusServidorLabel;
@@ -40,8 +48,9 @@ public class OrquestradorController {
     @FXML private TableColumn<UsuarioModel, Integer> usuarioTarefasCol;
 
     @FXML private PieChart graficoStatusTarefas;
+    @FXML private ProgressBar syncProgressBar;
 
-    @FXML private TextArea logArea;
+    @FXML private ListView<LogEntry> logListView;
     @FXML private Button iniciarServidorBtn;
     @FXML private Button pararServidorBtn;
     @FXML private Button limparLogBtn;
@@ -50,8 +59,8 @@ public class OrquestradorController {
     private final ObservableList<WorkerModel> workersData = FXCollections.observableArrayList();
     private final ObservableList<TarefaModel> tarefasData = FXCollections.observableArrayList();
     private final ObservableList<UsuarioModel> usuariosData = FXCollections.observableArrayList();
+    private final ObservableList<LogEntry> logData = FXCollections.observableArrayList();
 
-    // CORREÇÃO: Dados fixos do gráfico para evitar mudança de cores
     private final ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList(
             new PieChart.Data("Aguardando", 0),
             new PieChart.Data("Executando", 0),
@@ -73,18 +82,16 @@ public class OrquestradorController {
     }
 
     private void configurarTabelas() {
-        // Configurar tabela de Workers
         workerIdCol.setCellValueFactory(new PropertyValueFactory<>("id"));
         workerStatusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
         workerTarefasCol.setCellValueFactory(new PropertyValueFactory<>("tarefas"));
         workerUltimoHeartbeatCol.setCellValueFactory(new PropertyValueFactory<>("ultimoHeartbeat"));
         tabelaWorkers.setItems(workersData);
 
-        // Configurar tabela de Tarefas - CORREÇÃO: Larguras das colunas
         tarefaIdCol.setCellValueFactory(new PropertyValueFactory<>("id"));
         tarefaIdCol.setPrefWidth(120);
         tarefaDescCol.setCellValueFactory(new PropertyValueFactory<>("descricao"));
-        tarefaDescCol.setPrefWidth(300); // AUMENTAR largura para descrição
+        tarefaDescCol.setPrefWidth(300);
         tarefaStatusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
         tarefaStatusCol.setPrefWidth(100);
         tarefaWorkerCol.setCellValueFactory(new PropertyValueFactory<>("worker"));
@@ -93,7 +100,6 @@ public class OrquestradorController {
         tarefaUsuarioCol.setPrefWidth(100);
         tabelaTarefas.setItems(tarefasData);
 
-        // Configurar tabela de Usuários
         usuarioNomeCol.setCellValueFactory(new PropertyValueFactory<>("nome"));
         usuarioStatusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
         usuarioTarefasCol.setCellValueFactory(new PropertyValueFactory<>("totalTarefas"));
@@ -102,7 +108,6 @@ public class OrquestradorController {
 
     private void configurarGrafico() {
         graficoStatusTarefas.setTitle("Status das Tarefas");
-        // CORREÇÃO: Definir dados fixos uma única vez
         graficoStatusTarefas.setData(pieChartData);
         graficoStatusTarefas.setLegendVisible(true);
         graficoStatusTarefas.setLabelsVisible(true);
@@ -110,9 +115,9 @@ public class OrquestradorController {
     }
 
     private void configurarLog() {
-        logArea.setEditable(false);
-        logArea.setWrapText(true);
-        adicionarLog("Sistema inicializado.");
+        logListView.setItems(logData);
+        logListView.setCellFactory(param -> new LogCardCell());
+        adicionarLog("Log inicializado. Aguardando eventos...");
     }
 
     private void atualizarInterface() {
@@ -141,8 +146,6 @@ public class OrquestradorController {
 
     private void atualizarGrafico() {
         var statusCount = orquestradorService.getStatusTarefasCount();
-
-        // CORREÇÃO: Apenas atualizar os valores, não recriar o gráfico
         pieChartData.get(0).setPieValue(statusCount.getOrDefault("AGUARDANDO", 0));
         pieChartData.get(1).setPieValue(statusCount.getOrDefault("EXECUTANDO", 0));
         pieChartData.get(2).setPieValue(statusCount.getOrDefault("CONCLUIDA", 0));
@@ -155,7 +158,7 @@ public class OrquestradorController {
             protected Void call() {
                 while (!isCancelled()) {
                     try {
-                        Thread.sleep(2000); // Atualiza a cada 2 segundos
+                        Thread.sleep(2000);
                         if (!isCancelled()) {
                             atualizarInterface();
                         }
@@ -179,10 +182,7 @@ public class OrquestradorController {
             protected Void call() throws Exception {
                 try {
                     Platform.runLater(() -> adicionarLog("Iniciando servidor do orquestrador..."));
-
-                    // CORREÇÃO: Interceptar logs do servidor
                     orquestradorService.setLogCallback(OrquestradorController.this::adicionarLog);
-
                     orquestradorService.iniciarServidor();
                     Platform.runLater(() -> {
                         adicionarLog("Servidor iniciado com sucesso na porta 50050!");
@@ -203,6 +203,27 @@ public class OrquestradorController {
         thread.start();
     }
 
+
+
+    private void dispararAnimacaoSync() {
+        Platform.runLater(() -> {
+            // Animação de preenchimento
+            Timeline timeline = new Timeline(
+                    new KeyFrame(Duration.ZERO, new KeyValue(syncProgressBar.progressProperty(), 0), new KeyValue(syncProgressBar.opacityProperty(), 1)),
+                    new KeyFrame(Duration.seconds(0.5), new KeyValue(syncProgressBar.progressProperty(), 1))
+            );
+
+            // Animação de fade out (desaparecer)
+            FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.5), syncProgressBar);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+
+            // Executa o fade out após a barra preencher
+            timeline.setOnFinished(event -> fadeOut.play());
+            timeline.play();
+        });
+    }
+
     @FXML
     private void pararServidor() {
         try {
@@ -220,8 +241,7 @@ public class OrquestradorController {
 
     @FXML
     private void limparLog() {
-        logArea.clear();
-        adicionarLog("Log limpo.");
+        logData.clear(); // Limpa a lista de dados do log
     }
 
     @FXML
@@ -230,15 +250,59 @@ public class OrquestradorController {
         atualizarInterface();
     }
 
+    // ==================================================================
+    // MÉTODO DE LOG ATUALIZADO COM ÍCONES
+    // ==================================================================
     public void adicionarLog(String mensagem) {
         Platform.runLater(() -> {
             String timestamp = java.time.LocalDateTime.now().format(
                     java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")
             );
-            logArea.appendText(String.format("[%s] %s%n", timestamp, mensagem));
 
-            // Auto-scroll para o final
-            logArea.setScrollTop(Double.MAX_VALUE);
+            // Lógica para interpretar a mensagem e criar um LogEntry
+            LogEntry.LogLevel level = LogEntry.LogLevel.INFO;
+            String title = "Informação";
+            String details = mensagem;
+
+            if (mensagem.contains("NOVA TAREFA")) {
+                level = LogEntry.LogLevel.TASK_SUBMITTED;
+                title = "Nova Tarefa Submetida";
+                details = mensagem.substring(mensagem.indexOf("↳ ID:"));
+            } else if (mensagem.contains("CONCLUÍDA")) {
+                level = LogEntry.LogLevel.SUCCESS;
+                title = "Tarefa Concluída";
+                details = mensagem.substring(mensagem.indexOf("↳"));
+            } else if (mensagem.contains("DISTRIBUINDO")) {
+                level = LogEntry.LogLevel.TASK_DISTRIBUTED;
+                title = "Distribuindo Tarefa";
+                details = mensagem.substring(mensagem.indexOf("para worker:"));
+            } else if (mensagem.contains("FALHA") || mensagem.contains("ERRO")) {
+                level = LogEntry.LogLevel.ERROR;
+                title = "Erro no Sistema";
+                // NOVA CONDIÇÃO: Identifica workers inativos como um aviso
+            } else if (mensagem.contains("inativo")) {
+                level = LogEntry.LogLevel.WARNING; // Usando o novo tipo
+                title = "Worker Inativo";
+                details = mensagem.substring(mensagem.indexOf("Worker")).trim();
+            } else if (mensagem.contains("NOVO WORKER")) {
+                level = LogEntry.LogLevel.SUCCESS;
+                title = "Novo Worker Conectado";
+                details = mensagem.substring(mensagem.indexOf(":")+1).trim();
+            } else if (mensagem.contains("promovido a Primário")) {
+                level = LogEntry.LogLevel.FAILOVER;
+                title = "Failover de Orquestrador";
+                details = "Backup assumiu como primário.";
+            }
+
+            logData.add(new LogEntry(timestamp, title, details, level));
+
+            // ALTERAÇÃO AQUI: Rola para o último item adicionado
+            logListView.scrollTo(logData.size() - 1);
+
+            // Limita o tamanho do log para não consumir muita memória
+            if (logData.size() > 200) {
+                logData.remove(logData.size() - 1);
+            }
         });
     }
 

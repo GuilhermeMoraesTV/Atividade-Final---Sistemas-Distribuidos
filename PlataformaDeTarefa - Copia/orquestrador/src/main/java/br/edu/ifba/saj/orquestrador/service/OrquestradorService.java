@@ -10,12 +10,15 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 public class OrquestradorService {
     private boolean servidorAtivo = false;
     private final Map<String, Long> workersAtivos = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Tarefa> bancoDeTarefas = new java.util.concurrent.ConcurrentHashMap<>();
     private final AtomicLong lamportClock = new AtomicLong(0);
+
+    private Runnable syncCallback = null;
 
     private Consumer<String> logCallback = null;
 
@@ -30,12 +33,19 @@ public class OrquestradorService {
         System.out.println(mensagem);
     }
 
+    public void setSyncCallback(Runnable callback) {
+        this.syncCallback = callback;
+    }
+
     public void iniciarServidor() {
         if (!servidorAtivo) {
             new Thread(() -> {
                 try {
                     log("Iniciando serviços do orquestrador...");
                     OrquestradorCore.setLogCallback(this::log);
+
+                    OrquestradorCore.setSyncCallback(this.syncCallback);
+
                     OrquestradorCore.tentarIniciarModoPrimario(workersAtivos, bancoDeTarefas, lamportClock);
 
                     servidorAtivo = true;

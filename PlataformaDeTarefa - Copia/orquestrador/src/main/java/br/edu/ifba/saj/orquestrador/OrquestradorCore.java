@@ -18,6 +18,8 @@ public class OrquestradorCore {
     private static final int GRPC_PORT = 50050;
     private static final long TIMEOUT_WORKER_MS = 15000;
 
+    private static Runnable syncCallback = null;
+
     private static Consumer<String> logCallback = null;
 
     public static void setLogCallback(Consumer<String> callback) {
@@ -29,6 +31,10 @@ public class OrquestradorCore {
             logCallback.accept(mensagem);
         }
         System.out.println(mensagem);
+    }
+
+    public static void setSyncCallback(Runnable callback) {
+        syncCallback = callback;
     }
 
     public static boolean tentarIniciarModoPrimario(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas, AtomicLong lamportClock) {
@@ -117,7 +123,11 @@ public class OrquestradorCore {
         scheduler.scheduleAtFixedRate(() -> {
             if (!workersAtivos.isEmpty()) {
                 transmissor.transmitirEstado(workersAtivos);
-                log("Estado transmitido para backups - Workers: " + workersAtivos.size());
+
+                // DISPARA O CALLBACK DA ANIMAÇÃO, SE EXISTIR
+                if (syncCallback != null) {
+                    syncCallback.run();
+                }
             }
         }, 2, 2, TimeUnit.SECONDS);
     }

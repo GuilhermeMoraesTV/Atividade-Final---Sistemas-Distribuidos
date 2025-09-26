@@ -198,11 +198,13 @@
                         <!-- Log Section - RESPONSIVO -->
                         <VBox spacing="5.0" VBox.vgrow="ALWAYS">
                             <children>
-                                <Label text="Log do Sistema" styleClass="section-title">
+                                <Label text="Linha do Tempo de Eventos" styleClass="section-title">
                                     <font><Font name="Segoe UI Bold" size="16.0" /></font>
                                 </Label>
-                                <TextArea fx:id="logArea" prefHeight="300.0" minHeight="200.0" VBox.vgrow="ALWAYS"
-                                          style="-fx-font-family: 'Consolas', 'Monaco', monospace; -fx-font-size: 11px; -fx-control-inner-background: #2c3e50; -fx-text-fill: #2ecc71;" />
+
+                                <ProgressBar fx:id="syncProgressBar" prefWidth="200.0" progress="0.0" styleClass="sync-progress-bar" />
+
+                                <ListView fx:id="logListView" VBox.vgrow="ALWAYS" styleClass="log-list-view"/>
                             </children>
                         </VBox>
                     </children>
