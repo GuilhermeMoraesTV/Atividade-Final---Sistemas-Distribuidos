@@ -1,4 +1,5 @@
 package br.edu.ifba.saj.monitor;
+
 import br.edu.ifba.saj.monitor.controller.MonitorController;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -8,15 +9,16 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public class MonitorApp extends Application {
-    public static void main(String[] args) { launch(args); }
 
     @Override
     public void start(Stage primaryStage) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/br/edu/ifba/saj/monitor/view/MonitorView.fxml"));
         Parent root = loader.load();
 
-        primaryStage.setTitle("Dashboard de Monitoramento do Sistema");
-        Scene scene = new Scene(root, 1200, 800);
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/br/edu/ifba/saj/monitor/css/styles.css").toExternalForm());
+
+        primaryStage.setTitle("Monitor do Sistema");
         primaryStage.setScene(scene);
         primaryStage.show();
 
@@ -25,5 +27,9 @@ public class MonitorApp extends Application {
             controller.shutdown();
             Platform.exit();
         });
+    }
+
+    public static void main(String[] args) {
+        launch(args);
     }
 }

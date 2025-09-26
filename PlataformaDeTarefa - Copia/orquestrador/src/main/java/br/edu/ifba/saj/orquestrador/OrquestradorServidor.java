@@ -1,17 +1,23 @@
 package br.edu.ifba.saj.orquestrador;
 
 import br.edu.ifba.saj.protocolo.*;
+import com.google.protobuf.Empty;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
-
+import com.google.protobuf.Empty;
+import br.edu.ifba.saj.protocolo.EstadoGeral;
+import br.edu.ifba.saj.protocolo.WorkerInfo;
+import br.edu.ifba.saj.protocolo.TarefaInfo;
+import br.edu.ifba.saj.protocolo.MonitoramentoGrpc;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import static br.edu.ifba.saj.orquestrador.OrquestradorServidor.AutenticacaoImpl.usuariosDb;
 
@@ -70,50 +76,34 @@ public class OrquestradorServidor {
     }
 
     public static class MonitoramentoImpl extends MonitoramentoGrpc.MonitoramentoImplBase {
-        private static final List<StreamObserver<EstadoGeral>> monitorObservers = Collections.synchronizedList(new ArrayList<>());
+        private final List<StreamObserver<EstadoGeral>> monitorObservers = Collections.synchronizedList(new ArrayList<>());
+        private final Map<String, Long> workersAtivos;
+        private final Map<String, Tarefa> bancoDeTarefas;
+
+        public MonitoramentoImpl(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas) {
+            this.workersAtivos = workersAtivos;
+            this.bancoDeTarefas = bancoDeTarefas;
+        }
 
         @Override
-        public void inscreverParaEstadoGeral(com.google.protobuf.Empty request, StreamObserver<EstadoGeral> responseObserver) {
+        public void inscreverParaEstadoGeral(Empty request, StreamObserver<EstadoGeral> responseObserver) {
             System.out.println("Novo monitor conectado ao sistema.");
             monitorObservers.add(responseObserver);
         }
 
-        public static void enviarAtualizacaoGeral() {
+        public void enviarAtualizacaoGeral() {
             if (monitorObservers.isEmpty()) return;
-
             EstadoGeral.Builder estadoBuilder = EstadoGeral.newBuilder();
-
             workersAtivos.forEach((id, timestamp) -> {
-                long tarefasNoWorker = bancoDeTarefas.values().stream()
-                        .filter(t -> id.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.EXECUTANDO)
-                        .count();
-
-                estadoBuilder.addWorkers(WorkerInfo.newBuilder()
-                        .setWorkerId(id)
-                        .setStatus("ATIVO")
-                        .setTarefasExecutando((int) tarefasNoWorker)
-                        .build());
+                long tarefasNoWorker = bancoDeTarefas.values().stream().filter(t -> id.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.EXECUTANDO).count();
+                estadoBuilder.addWorkers(WorkerInfo.newBuilder().setWorkerId(id).setStatus("ATIVO").setTarefasExecutando((int) tarefasNoWorker).build());
             });
-
             bancoDeTarefas.values().forEach(tarefa -> {
-                estadoBuilder.addTarefas(TarefaInfo.newBuilder()
-                        .setId(tarefa.getId())
-                        .setDescricao(tarefa.getDados())
-                        .setStatus(tarefa.getStatus().toString())
-                        .setWorkerId(tarefa.getWorkerIdAtual() != null ? tarefa.getWorkerIdAtual() : "N/A")
-                        .build());
+                estadoBuilder.addTarefas(TarefaInfo.newBuilder().setId(tarefa.getId()).setDescricao(tarefa.getDados()).setStatus(tarefa.getStatus().toString()).setWorkerId(tarefa.getWorkerIdAtual() != null ? tarefa.getWorkerIdAtual() : "N/A").build());
             });
-
             estadoBuilder.setOrquestradorAtivoId("Principal (localhost:50050)");
-
-            EstadoGeral estado = estadoBuilder.build();
-
             new ArrayList<>(monitorObservers).forEach(observer -> {
-                try {
-                    observer.onNext(estado);
-                } catch (Exception e) {
-                    monitorObservers.remove(observer);
-                }
+                try { observer.onNext(estadoBuilder.build()); } catch (Exception e) { monitorObservers.remove(observer); }
             });
         }
     }
