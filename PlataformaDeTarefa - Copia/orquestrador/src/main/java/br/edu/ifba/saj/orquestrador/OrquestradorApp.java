@@ -14,102 +14,226 @@ import javafx.stage.Stage;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class OrquestradorApp extends Application {
 
     private Process backupProcess;
     public static boolean IS_FAILOVER_INSTANCE = false;
+    private OrquestradorController controller;
+
+    // Limita tentativas de reinicialização do backup
+    private final AtomicInteger tentativasBackup = new AtomicInteger(0);
+    private static final int MAX_TENTATIVAS_BACKUP = 3;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
+        log("Iniciando Orquestrador Principal...");
+
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/br.edu.ifba.saj.orquestrador/view/OrquestradorView.fxml"));
         Parent root = loader.load();
-        OrquestradorController controller = loader.getController();
+        controller = loader.getController();
 
-        boolean isFailover = OrquestradorBackup.IS_FAILOVER_INSTANCE || isAnotherOrchestratorActive();
+        boolean isFailover = IS_FAILOVER_INSTANCE || isAnotherOrchestratorActive();
         controller.setFailoverMode(isFailover);
         controller.setupApplicationMode();
-
-        // Se esta NÃO for uma instância de failover, ela é a principal e deve iniciar o backup.
-        if (!IS_FAILOVER_INSTANCE) {
-            startBackupProcess();
-        }
 
         Scene scene = new Scene(root, 1200, 800);
         try {
             scene.getStylesheets().add(getClass().getResource("/br.edu.ifba.saj.orquestrador/css/style.css").toExternalForm());
         } catch (Exception e) {
-            System.out.println("CSS não encontrado, usando estilo padrão");
+            log("CSS não encontrado, usando estilo padrão");
         }
 
-        primaryStage.setTitle("Dashboard do Orquestrador - Sistema Distribuído");
+        String titulo = IS_FAILOVER_INSTANCE ?
+                "Dashboard do Orquestrador - MODO FAILOVER (Backup Promovido)" :
+                "Dashboard do Orquestrador - Sistema Distribuído";
+
+        primaryStage.setTitle(titulo);
         primaryStage.setScene(scene);
         primaryStage.setMinWidth(1000);
         primaryStage.setMinHeight(700);
         primaryStage.show();
 
+        // Só inicia backup se não for failover e não houver outro orquestrador
+        if (!IS_FAILOVER_INSTANCE && !isFailover) {
+            startBackupProcess();
+        }
+
         primaryStage.setOnCloseRequest(e -> {
-            // Se o processo de backup foi iniciado por esta instância, ele deve ser finalizado.
-            if (backupProcess != null && backupProcess.isAlive()) {
-                System.out.println("Finalizando processo de backup...");
-                backupProcess.destroy();
-            }
-            if (controller != null) {
-                controller.shutdown();
-            }
-            Platform.exit();
-            System.exit(0);
+            log("Encerrando orquestrador...");
+            gracefulShutdown();
         });
+
+        log("Interface gráfica inicializada com sucesso");
     }
 
     private void startBackupProcess() {
-        System.out.println("Iniciando processo do Orquestrador de Backup em segundo plano...");
+        if (tentativasBackup.get() >= MAX_TENTATIVAS_BACKUP) {
+            log("AVISO: Máximo de tentativas de backup atingido. Backup desabilitado.");
+            return;
+        }
+
+        log("Iniciando processo do Orquestrador de Backup...");
+
         try {
-            String mvnCommand = System.getProperty("os.name").startsWith("Windows") ? "mvn.cmd" : "mvn";
+            String mvnCommand = System.getProperty("os.name").toLowerCase().startsWith("windows") ?
+                    "mvn.cmd" : "mvn";
             String projectRoot = new File("").getAbsolutePath();
 
-            // Comando corrigido para ser mais robusto
+            // CORREÇÃO: Caminho correto do POM
+            String pomPath = projectRoot + File.separator + "orquestrador" + File.separator + "pom.xml";
+
+            // Verifica se o arquivo POM existe
+            if (!new File(pomPath).exists()) {
+                log("ERRO: Arquivo POM não encontrado: " + pomPath);
+                return;
+            }
+
             ProcessBuilder pb = new ProcessBuilder(
                     mvnCommand,
                     "javafx:run",
-                    "-f", // Aponta explicitamente para o pom.xml do módulo orquestrador
-                    projectRoot + File.separator + "orquestrador" + File.separator + "pom.xml",
-                    "-Djavafx.mainClass=br.edu.ifba.saj.orquestrador.OrquestradorBackup"
+                    "-f", pomPath, // Caminho corrigido
+                    "-Djavafx.mainClass=br.edu.ifba.saj.orquestrador.OrquestradorBackup",
+                    "-q" // Modo quiet para reduzir logs
             );
 
-            pb.redirectErrorStream(true);
-            pb.inheritIO(); // Faz com que o backup imprima no mesmo console para depuração
-            backupProcess = pb.start();
+            pb.environment().put("JAVA_OPTS", "-Xmx256m"); // Menos memória
 
-            System.out.println("Processo de backup iniciado com sucesso.");
+            File logDir = new File("logs");
+            if (!logDir.exists()) {
+                logDir.mkdirs();
+            }
+
+            File backupLogFile = new File(logDir, "backup-" + System.currentTimeMillis() + ".log");
+            pb.redirectOutput(ProcessBuilder.Redirect.to(backupLogFile));
+            pb.redirectErrorStream(true);
+
+            backupProcess = pb.start();
+            tentativasBackup.incrementAndGet();
+
+            monitorarProcessoBackup();
+
+            log("Processo de backup iniciado com sucesso");
+            log("Log do backup: " + backupLogFile.getAbsolutePath());
+
         } catch (IOException e) {
-            System.err.println("FALHA AO INICIAR PROCESSO DE BACKUP!");
+            log("FALHA AO INICIAR PROCESSO DE BACKUP: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    // Método que verifica se a porta 50050 já está em uso por outro orquestrador
+    private void monitorarProcessoBackup() {
+        Thread monitorThread = new Thread(() -> {
+            try {
+                if (backupProcess != null) {
+                    int exitCode = backupProcess.waitFor();
+
+                    if (exitCode != 0 && tentativasBackup.get() < MAX_TENTATIVAS_BACKUP) {
+                        log("Processo de backup terminou com código: " + exitCode);
+                        log("Tentativa " + tentativasBackup.get() + "/" + MAX_TENTATIVAS_BACKUP);
+
+                        // Aguarda antes de reiniciar
+                        Thread.sleep(10000); // 10 segundos
+
+                        Platform.runLater(() -> {
+                            startBackupProcess();
+                            log("Processo de backup reiniciado automaticamente");
+                        });
+                    } else if (exitCode != 0) {
+                        log("AVISO: Backup falhou " + MAX_TENTATIVAS_BACKUP + " vezes. Desabilitando reinicialização automática.");
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log("Monitoramento do backup interrompido");
+            }
+        });
+
+        monitorThread.setDaemon(true);
+        monitorThread.setName("BackupMonitor");
+        monitorThread.start();
+    }
+
     private boolean isAnotherOrchestratorActive() {
-        // Não checa se for a instância lançada pelo backup para evitar checagem circular
-        if (OrquestradorBackup.IS_FAILOVER_INSTANCE) {
+        if (IS_FAILOVER_INSTANCE) {
             return false;
         }
 
-        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50050).usePlaintext().build();
+        ManagedChannel channel = null;
         try {
-            HealthGrpc.HealthBlockingStub stub = HealthGrpc.newBlockingStub(channel)
-                    .withDeadlineAfter(1, TimeUnit.SECONDS);
+            channel = ManagedChannelBuilder
+                    .forAddress("localhost", 50050)
+                    .usePlaintext()
+                    .build();
+
+            HealthGrpc.HealthBlockingStub stub = HealthGrpc
+                    .newBlockingStub(channel)
+                    .withDeadlineAfter(2, TimeUnit.SECONDS);
+
             stub.check(HealthCheckRequest.newBuilder().build());
-            System.out.println("Detetado outro orquestrador ativo. Iniciando em modo de monitoramento.");
+
+            log("Detectado outro orquestrador ativo. Iniciando em modo de monitoramento");
             return true;
+
         } catch (Exception e) {
             return false;
         } finally {
-            channel.shutdownNow();
+            if (channel != null) {
+                channel.shutdownNow();
+            }
+        }
+    }
+
+    private void gracefulShutdown() {
+        try {
+            if (backupProcess != null && backupProcess.isAlive()) {
+                log("Finalizando processo de backup...");
+
+                backupProcess.destroy();
+
+                if (!backupProcess.waitFor(5, TimeUnit.SECONDS)) {
+                    log("Forçando finalização do backup...");
+                    backupProcess.destroyForcibly();
+                }
+
+                log("Processo de backup finalizado");
+            }
+
+            if (controller != null) {
+                controller.shutdown();
+            }
+
+            log("Orquestrador finalizado com sucesso");
+
+        } catch (Exception e) {
+            log("Erro durante encerramento: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            Platform.exit();
+            System.exit(0);
+        }
+    }
+
+    private void log(String mensagem) {
+        String timestamp = java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
+        String logMessage = "[" + timestamp + "] " + mensagem;
+
+        System.out.println(logMessage);
+
+        if (controller != null) {
+            controller.adicionarLog(mensagem);
         }
     }
 
     public static void main(String[] args) {
+        System.out.println("============================================================");
+        System.out.println("🎯 ORQUESTRADOR PRINCIPAL - Sistema Distribuído");
+        System.out.println("🔧 Modo: INTERFACE GRÁFICA com Backup Automático");
+        System.out.println("🌐 Porta: 50050");
+        System.out.println("============================================================");
+
         launch(args);
     }
 }

@@ -313,67 +313,139 @@ public class OrquestradorController {
             String title = "Informação do Sistema";
             String details = mensagem;
 
-            if (mensagem.contains("Tarefas no sistema") || mensagem.startsWith("  ↳")) {
-                return;
+            // Filtra mensagens repetitivas que causam lentidão
+            if (mensagem.contains("Workers ativos:") && mensagem.contains("Tarefas no sistema:")) {
+                return; // Ignora logs repetitivos de status
             }
 
-            if (mensagem.contains("NOVA TAREFA")) {
-                level = LogEntry.LogLevel.TASK_SUBMITTED;
-                title = "Nova Tarefa Recebida";
-                details = mensagem.split("↳")[1].trim();
-            } else if (mensagem.contains("TAREFA CONCLUÍDA")) {
-                level = LogEntry.LogLevel.TASK_COMPLETED;
-                title = "Tarefa Finalizada pelo Worker";
-                details = mensagem.split("↳")[1].trim();
-            } else if (mensagem.contains("DISTRIBUINDO")) {
-                level = LogEntry.LogLevel.TASK_DISTRIBUTED;
-                title = "Tarefa em Distribuição";
-                details = "Para " + mensagem.split("para")[1].trim();
-            } else if (mensagem.contains("ENVIADA com sucesso")) {
-                level = LogEntry.LogLevel.TASK_SENT;
-                title = "Tarefa Enviada com Sucesso";
-                details = "Confirmado o envio para " + mensagem.split("para")[1].trim();
-            } else if (mensagem.contains("FALHA") || mensagem.contains("ERRO")) {
-                level = LogEntry.LogLevel.ERROR;
-                title = "Alerta de Erro";
-            } else if (mensagem.contains("inativo")) {
-                level = LogEntry.LogLevel.WARNING;
-                title = "Worker Desconectado";
-                details = mensagem.substring(mensagem.indexOf("Worker")).trim();
-            } else if (mensagem.contains("Reagendando")) {
-                level = LogEntry.LogLevel.WARNING;
-                title = "Reagendando Tarefa";
-                details = mensagem.substring(mensagem.indexOf("tarefa")).trim();
-            } else if (mensagem.contains("NOVO WORKER")) {
-                level = LogEntry.LogLevel.SUCCESS;
-                title = "Novo Worker Conectado";
-                details = mensagem.split(":")[2].trim();
-            } else if (mensagem.contains("promovido a Primário") || mensagem.contains("FAILOVER DETECTADO")) {
-                level = LogEntry.LogLevel.FAILOVER;
-                title = "Failover do Orquestrador";
-                details = "Backup assumiu o controle como primário.";
-            } else if (mensagem.contains("Servidor parado")) {
-                level = LogEntry.LogLevel.ERROR;
-                title = "Servidor Desligado";
-            } else if (mensagem.contains("Login bem-sucedido")) {
-                level = LogEntry.LogLevel.CLIENT_EVENT;
-                title = "Usuário Autenticado";
-                details = mensagem.split("-")[1].trim();
-            } else if (mensagem.contains("Cliente inscrito")) {
-                level = LogEntry.LogLevel.CLIENT_EVENT;
-                title = "Cliente Conectado";
-                details = mensagem.split(":")[1].trim();
-            } else if (mensagem.contains("Notificação enviada")) {
-                level = LogEntry.LogLevel.NOTIFICATION;
-                title = "Notificação de Status Enviada";
-                details = "Para " + mensagem.split("para")[1].split("-")[0].trim();
-            }
+            try {
+                if (mensagem.contains("NOVA TAREFA")) {
+                    level = LogEntry.LogLevel.TASK_SUBMITTED;
+                    title = "Nova Tarefa Recebida";
+                    // CORREÇÃO: Verifica se há split válido
+                    String[] parts = mensagem.split("↳");
+                    if (parts.length > 1) {
+                        details = parts[1].trim();
+                    } else {
+                        details = mensagem; // Usa mensagem completa se split falhar
+                    }
+                } else if (mensagem.contains("TAREFA CONCLUÍDA")) {
+                    level = LogEntry.LogLevel.TASK_COMPLETED;
+                    title = "Tarefa Finalizada pelo Worker";
+                    // CORREÇÃO: Verifica se há split válido
+                    String[] parts = mensagem.split("↳");
+                    if (parts.length > 1) {
+                        details = parts[1].trim();
+                    } else {
+                        details = mensagem; // Usa mensagem completa se split falhar
+                    }
+                } else if (mensagem.contains("DISTRIBUINDO")) {
+                    level = LogEntry.LogLevel.TASK_DISTRIBUTED;
+                    title = "Tarefa em Distribuição";
+                    String[] parts = mensagem.split(" para ");
+                    if (parts.length > 1) {
+                        details = "Para " + parts[1].trim();
+                    } else {
+                        details = mensagem;
+                    }
+                } else if (mensagem.contains("ENVIADA com sucesso")) {
+                    level = LogEntry.LogLevel.TASK_SENT;
+                    title = "Tarefa Enviada com Sucesso";
+                    String[] parts = mensagem.split(" para ");
+                    if (parts.length > 1) {
+                        details = "Confirmado o envio para " + parts[1].trim();
+                    } else {
+                        details = mensagem;
+                    }
+                } else if (mensagem.contains("FALHA") || mensagem.contains("ERRO")) {
+                    level = LogEntry.LogLevel.ERROR;
+                    title = "Alerta de Erro";
+                } else if (mensagem.contains("inativo")) {
+                    level = LogEntry.LogLevel.WARNING;
+                    title = "Worker Desconectado";
+                    if (mensagem.contains("Worker")) {
+                        int workerIndex = mensagem.indexOf("Worker");
+                        details = mensagem.substring(workerIndex).trim();
+                    } else {
+                        details = mensagem;
+                    }
+                } else if (mensagem.contains("Reagendando")) {
+                    level = LogEntry.LogLevel.WARNING;
+                    title = "Reagendando Tarefa";
+                    if (mensagem.contains("tarefa")) {
+                        int tarefaIndex = mensagem.indexOf("tarefa");
+                        details = mensagem.substring(tarefaIndex).trim();
+                    } else {
+                        details = mensagem;
+                    }
+                } else if (mensagem.contains("NOVO WORKER")) {
+                    level = LogEntry.LogLevel.SUCCESS;
+                    title = "Novo Worker Conectado";
+                    String[] parts = mensagem.split(":");
+                    if (parts.length > 2) {
+                        details = parts[2].trim();
+                    } else {
+                        details = mensagem;
+                    }
+                } else if (mensagem.contains("promovido a Primário") || mensagem.contains("FAILOVER DETECTADO")) {
+                    level = LogEntry.LogLevel.FAILOVER;
+                    title = "Failover do Orquestrador";
+                    details = "Backup assumiu o controle como primário.";
+                } else if (mensagem.contains("Servidor parado")) {
+                    level = LogEntry.LogLevel.ERROR;
+                    title = "Servidor Desligado";
+                } else if (mensagem.contains("Login bem-sucedido")) {
+                    level = LogEntry.LogLevel.CLIENT_EVENT;
+                    title = "Usuário Autenticado";
+                    String[] parts = mensagem.split("-");
+                    if (parts.length > 1) {
+                        details = parts[1].trim();
+                    } else {
+                        details = mensagem;
+                    }
+                } else if (mensagem.contains("Cliente inscrito")) {
+                    level = LogEntry.LogLevel.CLIENT_EVENT;
+                    title = "Cliente Conectado";
+                    String[] parts = mensagem.split(":");
+                    if (parts.length > 1) {
+                        details = parts[1].trim();
+                    } else {
+                        details = mensagem;
+                    }
+                } else if (mensagem.contains("Notificação enviada")) {
+                    level = LogEntry.LogLevel.NOTIFICATION;
+                    title = "Notificação de Status Enviada";
+                    String[] parts = mensagem.split(" para ");
+                    if (parts.length > 1) {
+                        String[] subParts = parts[1].split("-");
+                        if (subParts.length > 0) {
+                            details = "Para " + subParts[0].trim();
+                        } else {
+                            details = mensagem;
+                        }
+                    } else {
+                        details = mensagem;
+                    }
+                }
 
-            logData.add(new LogEntry(timestamp, title, details, level));
-            logListView.scrollTo(logData.size() - 1);
+                // Adiciona o log apenas se não estiver duplicado
+                LogEntry newEntry = new LogEntry(timestamp, title, details, level);
 
-            if (logData.size() > 200) {
-                logData.remove(0);
+                // Evita logs duplicados consecutivos
+                if (logData.isEmpty() || !logData.get(logData.size() - 1).getMessage().equals(details)) {
+                    logData.add(newEntry);
+                    logListView.scrollTo(logData.size() - 1);
+                }
+
+                // Limita o tamanho do log para evitar consumo excessivo de memória
+                if (logData.size() > 100) { // Reduzido de 200 para 100
+                    logData.remove(0);
+                }
+
+            } catch (Exception e) {
+                // Se houver erro no parsing, adiciona log simples
+                logData.add(new LogEntry(timestamp, "Sistema", mensagem, LogEntry.LogLevel.INFO));
+                System.err.println("Erro no parsing de log: " + e.getMessage());
             }
         });
     }
