@@ -59,11 +59,13 @@ public class SincronizadorEstado extends Thread {
 
         try {
             socket = new MulticastSocket(PORT);
-            socket.setSoTimeout(SOCKET_TIMEOUT_MS);
-
             InetAddress group = InetAddress.getByName(MULTICAST_ADDRESS);
-            socket.joinGroup(group);
 
+            InetAddress localInterface = InetAddress.getByName("127.0.0.1");
+            socket.setInterface(localInterface);
+
+            socket.joinGroup(group);
+            socket.setSoTimeout(SOCKET_TIMEOUT_MS);
             log("📡 Sincronizador em modo RECEPÇÃO iniciado");
             log("🔍 Escutando em " + MULTICAST_ADDRESS + ":" + PORT);
 
@@ -215,6 +217,9 @@ public class SincronizadorEstado extends Thread {
             socket = new MulticastSocket();
             InetAddress group = InetAddress.getByName(MULTICAST_ADDRESS);
 
+            InetAddress localInterface = InetAddress.getByName("127.0.0.1");
+            socket.setInterface(localInterface);
+
             EstadoSincronizado estado = new EstadoSincronizado();
             estado.workers = new ConcurrentHashMap<>(estadoAtual);
             estado.timestamp = System.currentTimeMillis();
@@ -312,7 +317,9 @@ public class SincronizadorEstado extends Thread {
         public String versao = "1.0";
 
         public EstadoSincronizado() {
+
             this.workers = new ConcurrentHashMap<>();
+
         }
     }
 }

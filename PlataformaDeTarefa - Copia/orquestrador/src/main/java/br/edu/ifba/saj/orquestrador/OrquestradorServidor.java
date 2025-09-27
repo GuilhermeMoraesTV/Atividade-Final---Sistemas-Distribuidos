@@ -23,11 +23,6 @@ public class OrquestradorServidor {
     private static final Map<String, Tarefa> bancoDeTarefas = new ConcurrentHashMap<>();
     private static final AtomicLong lamportClock = new AtomicLong(0);
 
-    public static void main(String[] args) {
-        System.out.println("Iniciando Orquestrador Principal...");
-        OrquestradorCore.tentarIniciarModoPrimario(workersAtivos, bancoDeTarefas, lamportClock);
-    }
-
     public static class HealthCheckImpl extends HealthGrpc.HealthImplBase {
         @Override
         public void check(io.grpc.health.v1.HealthCheckRequest request,
@@ -153,7 +148,7 @@ public class OrquestradorServidor {
         }
 
         public void setLogCallback(Consumer<String> callback) { logCallback = callback; }
-        private void log(String msg) { if (logCallback != null) logCallback.accept(msg); System.out.println(msg); }
+        private void log(String msg) { if (logCallback != null) logCallback.accept(msg); }
 
         @Override
         public void inscreverParaAtualizacoes(InscricaoRequest request, StreamObserver<TarefaInfo> responseObserver) {

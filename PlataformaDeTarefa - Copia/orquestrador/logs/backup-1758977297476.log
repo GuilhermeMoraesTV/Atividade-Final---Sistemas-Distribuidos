@@ -1,0 +1,23 @@
+============================================================
+? ORQUESTRADOR PRINCIPAL - Sistema Distribuído
+? Modo: INTERFACE GRÁFICA com Backup Automático
+? Porta: 50050
+============================================================
+[09:48:24] Iniciando Orquestrador Principal...
+[09:48:26] Iniciando processo do Orquestrador de Backup...
+[09:48:26] Processo de backup iniciado com sucesso
+[09:48:26] Log do backup: C:\Users\guidi\IdeaProjects\PlataformaDeTarefa - Copia\orquestrador\logs\backup-1758977306833.log
+[09:48:26] Interface gráfica inicializada com sucesso
+? Sistema iniciado limpo (sem dados simulados)
+Iniciando serviços do orquestrador...
+ATIVANDO MODO PRIMÁRIO...
+? Orquestrador ATIVO na porta 50050
+? Aguardando conexões de workers e clientes
+? Sistema pronto para processar tarefas
+Servidor gRPC iniciado na porta 50050
+[09:48:50] Encerrando orquestrador...
+[09:48:50] Finalizando processo de backup...
+[09:48:50] Processo de backup finalizado
+Servidor parado e dados limpos
+OrquestradorService desligado
+[09:48:50] Orquestrador finalizado com sucesso

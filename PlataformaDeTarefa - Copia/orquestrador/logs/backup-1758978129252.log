@@ -1,0 +1,12 @@
+============================================================
+? ORQUESTRADOR PRINCIPAL - Sistema Distribuído
+? Modo: INTERFACE GRÁFICA com Backup Automático
+? Porta: 50050
+============================================================
+[10:02:17] Iniciando Orquestrador Principal...
+[10:02:19] Detectado outro orquestrador ativo. Iniciando em modo de monitoramento
+[10:02:20] Interface gráfica inicializada com sucesso
+[10:02:22] Encerrando orquestrador...
+Servidor parado e dados limpos
+OrquestradorService desligado
+[10:02:22] Orquestrador finalizado com sucesso

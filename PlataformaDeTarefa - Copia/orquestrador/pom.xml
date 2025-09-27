@@ -15,6 +15,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <main.class>br.edu.ifba.saj.orquestrador.OrquestradorApp</main.class>
     </properties>
 
     <dependencies>
@@ -28,13 +29,11 @@
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
         </dependency>
-
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-services</artifactId>
             <version>1.50.2</version>
         </dependency>
-
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -69,9 +68,18 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>br.edu.ifba.saj.orquestrador.OrquestradorApp</mainClass>
+                    <mainClass>${main.class}</mainClass>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>run-backup</id>
+            <properties>
+                <main.class>br.edu.ifba.saj.orquestrador.OrquestradorBackup</main.class>
+            </properties>
+        </profile>
+    </profiles>
 </project>

@@ -10,17 +10,30 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 
 public class OrquestradorService {
     private boolean servidorAtivo = false;
-    private final Map<String, Long> workersAtivos = new java.util.concurrent.ConcurrentHashMap<>();
-    private final Map<String, Tarefa> bancoDeTarefas = new java.util.concurrent.ConcurrentHashMap<>();
-    private final AtomicLong lamportClock = new AtomicLong(0);
+    private final Map<String, Long> workersAtivos;
+    private final Map<String, Tarefa> bancoDeTarefas;
+    private final AtomicLong lamportClock;
+
+    // Construtor Padrão (para o principal)
+    public OrquestradorService() {
+        this.workersAtivos = new java.util.concurrent.ConcurrentHashMap<>();
+        this.bancoDeTarefas = new java.util.concurrent.ConcurrentHashMap<>();
+        this.lamportClock = new AtomicLong(0);
+    }
+
+    // CONSTRUTOR DE FAILOVER CORRIGIDO (sem tarefas)
+    public OrquestradorService(Map<String, Long> workersHerdados, AtomicLong clockHerdado) {
+        this.workersAtivos = workersHerdados;
+        this.lamportClock = clockHerdado;
+        this.bancoDeTarefas = new java.util.concurrent.ConcurrentHashMap<>(); // Tarefas começam vazias
+        this.servidorAtivo = true; // Servidor já inicia ativo no failover
+    }
 
     private Runnable syncCallback = null;
     private Runnable healthCheckCallback = null;
-
     private Consumer<String> logCallback = null;
 
     public void setLogCallback(Consumer<String> callback) {
@@ -31,7 +44,6 @@ public class OrquestradorService {
         if (logCallback != null) {
             logCallback.accept(mensagem);
         }
-        System.out.println(mensagem);
     }
 
     public void setSyncCallback(Runnable callback) {
@@ -42,7 +54,6 @@ public class OrquestradorService {
         this.healthCheckCallback = callback;
     }
 
-
     public void iniciarServidor() {
         if (!servidorAtivo) {
             new Thread(() -> {
@@ -51,29 +62,19 @@ public class OrquestradorService {
                     OrquestradorCore.setLogCallback(this::log);
                     OrquestradorCore.setSyncCallback(this.syncCallback);
                     OrquestradorCore.setHealthCheckCallback(this.healthCheckCallback);
-
                     OrquestradorCore.tentarIniciarModoPrimario(workersAtivos, bancoDeTarefas, lamportClock);
-
                     servidorAtivo = true;
                     log("✅ Orquestrador ATIVO na porta 50050");
-                    log("📡 Aguardando conexões de workers e clientes");
-                    log("🔄 Sistema pronto para processar tarefas");
-
-
                 } catch (Exception e) {
                     log("❌ ERRO ao iniciar servidor: " + e.getMessage());
-                    throw new RuntimeException("Erro ao iniciar servidor", e);
                 }
             }).start();
-            log("🧹 Sistema iniciado limpo (sem dados simulados)");
         }
     }
 
     public void pararServidor() {
         servidorAtivo = false;
-        workersAtivos.clear();
-        bancoDeTarefas.clear();
-        log("Servidor parado e dados limpos");
+        // Não limpa os mapas aqui para o failover funcionar
     }
 
     public boolean isServidorAtivo() {
@@ -102,16 +103,11 @@ public class OrquestradorService {
                 .map(entry -> {
                     String workerId = entry.getKey();
                     long ultimoHeartbeat = entry.getValue();
-
-                    // CORREÇÃO: Contar tarefas CONCLUÍDAS pelo worker em vez de em execução.
                     long tarefasConcluidas = bancoDeTarefas.values().stream()
-                            .filter(t -> workerId.equals(t.getWorkerIdAtual()) &&
-                                    t.getStatus() == StatusTarefa.CONCLUIDA)
+                            .filter(t -> workerId.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.CONCLUIDA)
                             .count();
-
                     String status = (agora - ultimoHeartbeat < 15000) ? "ATIVO" : "INATIVO";
                     String ultimoHeartbeatStr = formatarTempo(ultimoHeartbeat);
-
                     return new WorkerModel(workerId, status, (int) tarefasConcluidas, ultimoHeartbeatStr);
                 })
                 .collect(Collectors.toList());
@@ -119,17 +115,14 @@ public class OrquestradorService {
 
     public List<TarefaModel> getTarefas() {
         return bancoDeTarefas.values().stream()
-                .map(t -> {
-                    String descricaoFormatada = formatarDescricaoTarefa(t.getDados());
-                    return new TarefaModel(
-                            t.getId(),
-                            descricaoFormatada,
-                            t.getStatus().toString(),
-                            t.getWorkerIdAtual() != null ? t.getWorkerIdAtual() : "N/A",
-                            t.getUsuarioId()
-                    );
-                })
-                .sorted((t1, t2) -> t2.getId().compareTo(t1.getId()))
+                .map(t -> new TarefaModel(
+                        t.getId(),
+                        formatarDescricaoTarefa(t.getDados()),
+                        t.getStatus().toString(),
+                        t.getWorkerIdAtual() != null ? t.getWorkerIdAtual() : "N/A",
+                        t.getUsuarioId()
+                ))
+                .sorted(Comparator.comparing(TarefaModel::getId).reversed())
                 .collect(Collectors.toList());
     }
 
@@ -137,10 +130,7 @@ public class OrquestradorService {
         if (dados == null || dados.trim().isEmpty()) {
             return "Tarefa sem descrição";
         }
-        if (dados.length() > 100) {
-            return dados.substring(0, 97) + "...";
-        }
-        return dados;
+        return dados.length() > 100 ? dados.substring(0, 97) + "..." : dados;
     }
 
     public List<UsuarioModel> getUsuarios() {
@@ -160,25 +150,21 @@ public class OrquestradorService {
         statusCount.put("EXECUTANDO", 0);
         statusCount.put("CONCLUIDA", 0);
         statusCount.put("FALHA", 0);
-
         bancoDeTarefas.values().forEach(tarefa -> {
             String status = tarefa.getStatus().toString();
-            statusCount.put(status, statusCount.get(status) + 1);
+            statusCount.merge(status, 1, Integer::sum);
         });
-
         return statusCount;
     }
 
     private String formatarTempo(long timestamp) {
-        LocalDateTime dateTime = LocalDateTime.ofInstant(
-                java.time.Instant.ofEpochMilli(timestamp),
-                java.time.ZoneId.systemDefault()
+        return DateTimeFormatter.ofPattern("HH:mm:ss").format(
+                LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(timestamp), java.time.ZoneId.systemDefault())
         );
-        return dateTime.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
     }
 
     public void shutdown() {
         pararServidor();
-        log("OrquestradorService desligado");
+        log("OrquestradorService desligado.");
     }
 }

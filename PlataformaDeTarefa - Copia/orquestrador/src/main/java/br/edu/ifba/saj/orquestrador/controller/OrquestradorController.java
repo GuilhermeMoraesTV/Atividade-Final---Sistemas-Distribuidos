@@ -61,7 +61,7 @@ public class OrquestradorController {
     @FXML private Button limparLogBtn;
 
     private boolean isFailoverMode = false;
-    private final OrquestradorService orquestradorService = new OrquestradorService();
+    private OrquestradorService orquestradorService = new OrquestradorService();
     private final ObservableList<WorkerModel> workersData = FXCollections.observableArrayList();
     private final ObservableList<TarefaModel> tarefasData = FXCollections.observableArrayList();
     private final ObservableList<UsuarioModel> usuariosData = FXCollections.observableArrayList();
@@ -83,6 +83,10 @@ public class OrquestradorController {
 
     @FXML
     public void initialize() {
+
+        if (this.orquestradorService == null) {
+            this.orquestradorService = new OrquestradorService();
+        }
         configurarTabelas();
         configurarGrafico();
         configurarLog();
@@ -135,6 +139,14 @@ public class OrquestradorController {
         graficoStatusTarefas.setLabelsVisible(true);
         atualizarGrafico();
     }
+
+    public void initFailoverState(OrquestradorService serviceComEstado) {
+        this.orquestradorService = serviceComEstado;
+        // Configura a UI para refletir o estado de failover
+        setFailoverMode(true);
+        setupApplicationMode();
+    }
+
     private void configurarLog() {
         logListView.setItems(logData);
         logListView.setCellFactory(param -> new LogCardCell());
