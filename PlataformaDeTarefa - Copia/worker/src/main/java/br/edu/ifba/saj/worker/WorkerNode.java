@@ -20,33 +20,35 @@ public class WorkerNode {
     private final String workerId;
     private final int port;
     private final String orquestradorTarget;
-    // Removido 'final' para permitir a reconexão
     private ManagedChannel orquestradorChannel;
     private GerenciadorTarefasGrpc.GerenciadorTarefasBlockingStub orquestradorStub;
     private Server server;
     private final AtomicLong lamportClock = new AtomicLong(0);
-    private final AtomicInteger tarefasExecutadas = new AtomicInteger(0);
     private final AtomicInteger tarefasEmExecucao = new AtomicInteger(0);
+    private final ConclusaoCallback callbackDeConclusao;
+
 
     public WorkerNode(String host, int port, String orquestradorTarget) {
         this.port = port;
         this.workerId = host + ":" + port;
         this.orquestradorTarget = orquestradorTarget;
-        // A conexão inicial agora é feita em um método separado
+        this.callbackDeConclusao = this::avisarConclusao;
         conectarAoOrquestrador();
     }
 
-    // NOVO MÉTODO: Centraliza a lógica de conexão
     private void conectarAoOrquestrador() {
         SimpleLogger.workerInfo(workerId, "Tentando conectar ao orquestrador em " + orquestradorTarget + "...");
+        if (this.orquestradorChannel != null && !this.orquestradorChannel.isShutdown()) {
+            this.orquestradorChannel.shutdownNow();
+        }
         this.orquestradorChannel = ManagedChannelBuilder.forTarget(orquestradorTarget).usePlaintext().build();
         this.orquestradorStub = GerenciadorTarefasGrpc.newBlockingStub(orquestradorChannel);
-        SimpleLogger.workerSuccess(workerId, "Canal de comunicação com orquestrador criado.");
+        SimpleLogger.workerSuccess(workerId, "Canal de comunicação com orquestrador (re)criado.");
     }
 
     public void start() throws IOException {
         server = ServerBuilder.forPort(port)
-                .addService(new GerenciadorTarefasImpl(workerId, lamportClock, tarefasEmExecucao, this::avisarConclusao))
+                .addService(new GerenciadorTarefasImpl(workerId, lamportClock, tarefasEmExecucao, this.callbackDeConclusao))
                 .build()
                 .start();
 
@@ -68,7 +70,7 @@ public class WorkerNode {
 
     public void startHeartbeat() {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduler.scheduleAtFixedRate(this::enviarHeartbeat, 0, 10, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(this::enviarHeartbeat, 0, 5, TimeUnit.SECONDS);
     }
 
     private void enviarHeartbeat() {
@@ -79,42 +81,32 @@ public class WorkerNode {
                     .setTarefasEmExecucao(tarefasEmExecucao.get())
                     .setLamportTimestamp(timestamp)
                     .build();
-            orquestradorStub.enviarHeartbeat(request);
+            orquestradorStub.withDeadlineAfter(3, TimeUnit.SECONDS).enviarHeartbeat(request);
         } catch (StatusRuntimeException e) {
-            // LÓGICA DE RECONEXÃO ADICIONADA AQUI
             SimpleLogger.workerError(workerId, "Falha no heartbeat: " + e.getStatus().getDescription());
             SimpleLogger.workerWarning(workerId, "Orquestrador possivelmente offline. Tentando reconectar...");
-            try {
-                // Tenta recriar o canal de comunicação
-                orquestradorChannel.shutdownNow();
-                conectarAoOrquestrador();
-            } catch (Exception ex) {
-                SimpleLogger.workerError(workerId, "Erro ao tentar reconectar: " + ex.getMessage());
-            }
+            conectarAoOrquestrador();
         } catch (Exception e) {
             SimpleLogger.workerError(workerId, "Erro inesperado no heartbeat: " + e.getMessage());
         }
     }
 
-    // ... (resto da classe sem alterações)
     private void avisarConclusao(String tarefaId) {
         try {
             long timestamp = lamportClock.incrementAndGet();
-
             FinalizarTarefaRequest request = FinalizarTarefaRequest.newBuilder()
                     .setTarefaId(tarefaId)
                     .setWorkerId(workerId)
                     .setLamportTimestamp(timestamp)
                     .build();
 
-            orquestradorStub.finalizarTarefa(request);
-            tarefasExecutadas.incrementAndGet();
+            orquestradorStub.withDeadlineAfter(10, TimeUnit.SECONDS).finalizarTarefa(request);
+            SimpleLogger.workerSuccess(workerId, String.format("Notificação de conclusão da tarefa %s enviada.", tarefaId.substring(0, 8)));
 
-            SimpleLogger.workerSuccess(workerId, String.format("Tarefa %s concluída (Total: %d)",
-                    tarefaId.substring(0, 8) + "...", tarefasExecutadas.get()));
-
-        } catch (Exception e) {
+        } catch (StatusRuntimeException e) {
             SimpleLogger.workerError(workerId, "Falha ao finalizar tarefa " + tarefaId + ": " + e.getMessage());
+            SimpleLogger.workerWarning(workerId, "A tarefa será finalizada no orquestrador no próximo heartbeat.");
+            conectarAoOrquestrador();
         }
     }
 
@@ -125,7 +117,11 @@ public class WorkerNode {
 
         int port = 50051;
         if (args.length > 0 && !args[0].startsWith("--")) {
-            port = Integer.parseInt(args[0]);
+            try {
+                port = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.err.println("Porta inválida. Usando a porta padrão 50051.");
+            }
         }
 
         String orquestradorTarget = "localhost:50050";
@@ -161,23 +157,22 @@ public class WorkerNode {
 
             String tarefaId = request.getTarefaId();
             String dadosTarefa = request.getDadosTarefa();
-
             String tituloTarefa = extrairTitulo(dadosTarefa);
 
             tarefasEmExecucao.incrementAndGet();
-            SimpleLogger.workerInfo(workerId, String.format("Nova tarefa: %s | ID: %s...",
+            SimpleLogger.workerInfo(workerId, String.format("Nova tarefa recebida: %s | ID: %s...",
                     tituloTarefa, tarefaId.substring(0, 8)));
 
             new Thread(() -> {
                 try {
-                    int tempoProcessamento = 5000 + (int)(Math.random() * 5000);
+                    int tempoProcessamento = 3000 + (int)(Math.random() * 7000);
+                    SimpleLogger.workerInfo(workerId, String.format("Processando '%s' por %dms", tituloTarefa, tempoProcessamento));
                     Thread.sleep(tempoProcessamento);
-
-                    SimpleLogger.workerSuccess(workerId, String.format("Processamento concluído: %s", tituloTarefa));
-
+                    SimpleLogger.workerSuccess(workerId, String.format("Processamento de '%s' concluído.", tituloTarefa));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    SimpleLogger.workerError(workerId, "Processamento interrompido: " + tituloTarefa);
+                    // ** LINHA CORRIGIDA **
+                    SimpleLogger.workerError(workerId, String.format("Processamento de '%s' interrompido.", tituloTarefa));
                 } finally {
                     tarefasEmExecucao.decrementAndGet();
                     callback.onConcluido(tarefaId);
@@ -192,14 +187,11 @@ public class WorkerNode {
             if (dadosTarefa.contains(":")) {
                 String[] partes = dadosTarefa.split(":", 2);
                 String titulo = partes[0].trim();
-
                 if (titulo.startsWith("[") && titulo.contains("]")) {
                     titulo = titulo.substring(titulo.indexOf("]") + 1).trim();
                 }
-
                 return titulo.length() > 30 ? titulo.substring(0, 27) + "..." : titulo;
             }
-
             return dadosTarefa.length() > 30 ? dadosTarefa.substring(0, 27) + "..." : dadosTarefa;
         }
     }

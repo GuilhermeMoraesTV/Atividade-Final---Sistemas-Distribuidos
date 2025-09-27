@@ -1,12 +1,21 @@
 package br.edu.ifba.saj.cliente.service;
 
+import br.edu.ifba.saj.orquestrador.controller.OrquestradorController;
+import br.edu.ifba.saj.orquestrador.service.OrquestradorService;
 import br.edu.ifba.saj.protocolo.*;
 import br.edu.ifba.saj.comum.util.SimpleLogger;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.health.v1.HealthCheckRequest;
+import io.grpc.health.v1.HealthGrpc;
 import io.grpc.stub.StreamObserver;
+import javafx.application.Platform;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,10 +27,10 @@ import java.util.function.Consumer;
 
 public class ClienteService {
 
-    private final ManagedChannel channel;
-    private final AutenticacaoGrpc.AutenticacaoBlockingStub authStub;
-    private final GerenciadorTarefasGrpc.GerenciadorTarefasBlockingStub tarefaStub;
-    private final GerenciadorTarefasGrpc.GerenciadorTarefasStub asyncTarefaStub;
+    private ManagedChannel channel; // Removido 'final' para permitir a recriação
+    private AutenticacaoGrpc.AutenticacaoBlockingStub authStub;
+    private GerenciadorTarefasGrpc.GerenciadorTarefasBlockingStub tarefaStub;
+    private GerenciadorTarefasGrpc.GerenciadorTarefasStub asyncTarefaStub;
 
     private String tokenSessao;
     private String usuarioLogado;
@@ -33,13 +42,23 @@ public class ClienteService {
     private boolean streamAtivo = false;
 
     public ClienteService() {
+        // A conexão agora é gerenciada dinamicamente
+        conectarAoServidor();
+        SimpleLogger.clienteInfo("Serviço iniciado e tentando conectar ao servidor...");
+    }
+
+    // NOVO MÉTODO: Centraliza a criação do canal e dos stubs
+    private void conectarAoServidor() {
+        if (channel != null && !channel.isShutdown()) {
+            channel.shutdown();
+        }
         this.channel = ManagedChannelBuilder.forAddress("localhost", 50050).usePlaintext().build();
         this.authStub = AutenticacaoGrpc.newBlockingStub(channel);
         this.tarefaStub = GerenciadorTarefasGrpc.newBlockingStub(channel);
         this.asyncTarefaStub = GerenciadorTarefasGrpc.newStub(channel);
-
-        SimpleLogger.clienteInfo("Serviço iniciado e conectando ao servidor...");
+        SimpleLogger.clienteInfo("Canal de comunicação com o servidor (re)criado.");
     }
+
 
     public boolean login(String usuario, String senha) {
         if (usuario == null || usuario.trim().isEmpty() || senha == null || senha.trim().isEmpty()) {
@@ -69,6 +88,8 @@ public class ClienteService {
 
         } catch (StatusRuntimeException e) {
             SimpleLogger.clienteError("Falha no login para " + usuario + ": " + e.getStatus().getDescription());
+            // Se falhar, tenta reconectar para a próxima tentativa
+            conectarAoServidor();
             return false;
         }
     }
@@ -92,6 +113,7 @@ public class ClienteService {
 
         } catch (StatusRuntimeException e) {
             SimpleLogger.clienteError("Erro ao consultar tarefas: " + e.getStatus().getDescription());
+            conectarAoServidor(); // Tenta reconectar
             return new ArrayList<>();
         }
     }
@@ -118,7 +140,7 @@ public class ClienteService {
                 .setTokenSessao(tokenSessao)
                 .build();
 
-        asyncTarefaStub.inscreverParaAtualizacoes(request, new StreamObserver<TarefaInfo>() {
+        asyncTarefaStub.inscreverParaAtualizacoes(request, new StreamObserver<>() {
             @Override
             public void onNext(TarefaInfo tarefaInfo) {
                 String titulo = extrairTitulo(tarefaInfo.getDescricao());
@@ -128,12 +150,16 @@ public class ClienteService {
 
             @Override
             public void onError(Throwable t) {
-                streamAtivo = false;
+                streamAtivo = false; // Marca o stream como inativo
                 if (!isShutdown) {
                     Status status = Status.fromThrowable(t);
                     SimpleLogger.clienteWarning("Stream interrompido: " + status.getDescription());
-                    SimpleLogger.clienteInfo("Reconectando em 5 segundos...");
-                    scheduler.schedule(() -> iniciarStreamDeAtualizacoes(), 5, TimeUnit.SECONDS);
+                    SimpleLogger.clienteInfo("Tentando reconectar em 5 segundos...");
+                    // **LÓGICA DE RECONEXÃO**
+                    scheduler.schedule(() -> {
+                        conectarAoServidor(); // Recria o canal
+                        iniciarStreamDeAtualizacoes(); // Tenta se inscrever novamente
+                    }, 5, TimeUnit.SECONDS);
                 }
             }
 
@@ -141,9 +167,11 @@ public class ClienteService {
             public void onCompleted() {
                 streamAtivo = false;
                 if (!isShutdown) {
-                    SimpleLogger.clienteWarning("Stream encerrado pelo servidor");
-                    SimpleLogger.clienteInfo("Reconectando em 5 segundos...");
-                    scheduler.schedule(() -> iniciarStreamDeAtualizacoes(), 5, TimeUnit.SECONDS);
+                    SimpleLogger.clienteWarning("Stream encerrado pelo servidor. Tentando reconectar em 5 segundos...");
+                    scheduler.schedule(() -> {
+                        conectarAoServidor();
+                        iniciarStreamDeAtualizacoes();
+                    }, 5, TimeUnit.SECONDS);
                 }
             }
         });
@@ -170,6 +198,7 @@ public class ClienteService {
 
         } catch (StatusRuntimeException e) {
             SimpleLogger.clienteError("Erro de comunicação no registro: " + e.getStatus().getDescription());
+            conectarAoServidor(); // Tenta reconectar
             return RegistroResponse.newBuilder()
                     .setSucesso(false)
                     .setMensagem("Erro de comunicação: " + e.getStatus().getDescription())
@@ -179,12 +208,9 @@ public class ClienteService {
 
     public String submeterTarefa(String dadosTarefa) {
         if (tokenSessao == null) {
-            SimpleLogger.clienteError("Tentativa de submeter tarefa sem autenticação");
             return "Erro: Faça login antes de submeter uma tarefa.";
         }
-
-        if (dadosTarefa == null || dadosTarefa.trim().isEmpty()) {
-            SimpleLogger.clienteError("Tentativa de submeter tarefa vazia");
+        if (dadosTarefa == null || dadosTarefa.trim().isEmpty()){
             return "Erro: A descrição da tarefa não pode estar vazia.";
         }
 
@@ -205,12 +231,12 @@ public class ClienteService {
 
             String resultado = "Tarefa " + response.getTarefaId().substring(0, 8) + "... -> " + response.getMensagemStatus();
             SimpleLogger.clienteSuccess("Tarefa submetida: " + titulo);
-
             return resultado;
 
         } catch (StatusRuntimeException e) {
             SimpleLogger.clienteError("Falha ao submeter tarefa: " + e.getStatus().getDescription());
-            return "Falha ao submeter tarefa: " + e.getStatus().getDescription();
+            conectarAoServidor(); // Tenta reconectar
+            return "Falha ao submeter tarefa. Verifique a conexão com o servidor.";
         }
     }
 
@@ -218,15 +244,11 @@ public class ClienteService {
         if (dadosTarefa.contains(":")) {
             String[] partes = dadosTarefa.split(":", 2);
             String titulo = partes[0].trim();
-
-            // Remove prefixo de prioridade se existir
             if (titulo.startsWith("[") && titulo.contains("]")) {
                 titulo = titulo.substring(titulo.indexOf("]") + 1).trim();
             }
-
             return titulo.length() > 40 ? titulo.substring(0, 37) + "..." : titulo;
         }
-
         return dadosTarefa.length() > 40 ? dadosTarefa.substring(0, 37) + "..." : dadosTarefa;
     }
 
@@ -234,16 +256,15 @@ public class ClienteService {
         SimpleLogger.clienteInfo("Encerrando cliente...");
         this.isShutdown = true;
         this.streamAtivo = false;
-
         scheduler.shutdownNow();
-
         try {
-            channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
-            SimpleLogger.clienteSuccess("Cliente encerrado com sucesso");
+            if (channel != null) {
+                channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+            }
         } catch (InterruptedException e) {
-            SimpleLogger.clienteWarning("Encerramento interrompido, forçando...");
             channel.shutdownNow();
         }
+        SimpleLogger.clienteSuccess("Cliente encerrado com sucesso");
     }
 
     public String getUsuarioLogado() {
@@ -254,3 +275,4 @@ public class ClienteService {
         return tokenSessao != null && !tokenSessao.isEmpty();
     }
 }
+

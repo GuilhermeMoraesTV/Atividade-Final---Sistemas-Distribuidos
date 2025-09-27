@@ -1,3 +1,4 @@
+// Em /PlataformaDeTarefa - Copia/orquestrador/src/main/java/br/edu/ifba/saj/orquestrador/OrquestradorApp.java
 package br.edu.ifba.saj.orquestrador;
 
 import br.edu.ifba.saj.orquestrador.controller.OrquestradorController;
@@ -20,20 +21,27 @@ public class OrquestradorApp extends Application {
 
     public static boolean IS_FAILOVER_INSTANCE = false;
     private OrquestradorController controller;
+    // A variável backupProcess foi removida
 
     @Override
     public void start(Stage primaryStage) throws Exception {
         log("Iniciando Orquestrador Principal...");
 
+        if (!IS_FAILOVER_INSTANCE && isAnotherOrchestratorActive()) {
+            log("Detectado outro orquestrador ativo. Encerrando esta instância.");
+            Platform.exit();
+            return;
+        }
+
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/br.edu.ifba.saj.orquestrador/view/OrquestradorView.fxml"));
         Parent root = loader.load();
         controller = loader.getController();
 
-        // O modo failover agora é gerenciado pelo OrquestradorBackup
         if (IS_FAILOVER_INSTANCE) {
             controller.setFailoverMode(true);
         }
         controller.setupApplicationMode();
+        // A chamada para iniciarProcessoBackup() foi removida daqui
 
         Scene scene = new Scene(root, 1200, 800);
         try {
@@ -43,7 +51,7 @@ public class OrquestradorApp extends Application {
         }
 
         String titulo = IS_FAILOVER_INSTANCE ?
-                "Dashboard do Orquestrador - MODO FAILOVER (Backup Promovido)" :
+                "Dashboard do Orquestrador - MODO FAILOVER (Promovido)" :
                 "Dashboard do Orquestrador - Sistema Distribuído";
 
         primaryStage.setTitle(titulo);
@@ -60,44 +68,46 @@ public class OrquestradorApp extends Application {
         log("Interface gráfica inicializada com sucesso");
     }
 
-    private boolean isAnotherOrchestratorActive() {
-        if (IS_FAILOVER_INSTANCE) {
-            return false;
-        }
+    // O método iniciarProcessoBackup() foi completamente removido.
 
+    private boolean isAnotherOrchestratorActive() {
         ManagedChannel channel = null;
         try {
-            channel = ManagedChannelBuilder
-                    .forAddress("localhost", 50050)
+            channel = ManagedChannelBuilder.forAddress("localhost", 50050)
                     .usePlaintext()
                     .build();
 
-            HealthGrpc.HealthBlockingStub stub = HealthGrpc
-                    .newBlockingStub(channel)
+            HealthGrpc.HealthBlockingStub stub = HealthGrpc.newBlockingStub(channel)
                     .withDeadlineAfter(2, TimeUnit.SECONDS);
 
             stub.check(HealthCheckRequest.newBuilder().build());
 
-            log("Detectado outro orquestrador ativo. Iniciando em modo de monitoramento");
-            return true;
+            log("Detectado outro orquestrador ativo.");
+            return true; // Se a chamada funcionou, outro orquestrador está ativo.
 
         } catch (Exception e) {
+            // Se qualquer exceção ocorrer (ex: falha na conexão), significa que não há outro orquestrador.
             return false;
         } finally {
+            // Garante que o canal de comunicação seja sempre fechado após a verificação.
             if (channel != null) {
-                channel.shutdownNow();
+                try {
+                    channel.shutdown().awaitTermination(1, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    channel.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
+
 
     private void gracefulShutdown() {
         try {
             if (controller != null) {
                 controller.shutdown();
             }
-
             log("Orquestrador finalizado com sucesso");
-
         } catch (Exception e) {
             log("Erro durante encerramento: " + e.getMessage());
             e.printStackTrace();
@@ -125,6 +135,11 @@ public class OrquestradorApp extends Application {
         System.out.println("🔧 Modo: INTERFACE GRÁFICA (Execute OrquestradorBackup separadamente para failover)");
         System.out.println("🌐 Porta: 50050");
         System.out.println("============================================================");
+
+        if (args.length > 0 && "--failover".equals(args[0])) {
+            IS_FAILOVER_INSTANCE = true;
+            System.out.println("⚠️ ATENÇÃO: Iniciando em modo de FAILOVER.");
+        }
 
         launch(args);
     }

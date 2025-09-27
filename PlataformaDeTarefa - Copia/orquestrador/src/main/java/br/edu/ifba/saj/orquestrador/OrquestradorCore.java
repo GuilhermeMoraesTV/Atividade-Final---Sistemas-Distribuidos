@@ -19,6 +19,7 @@ public class OrquestradorCore {
     private static Runnable syncCallback = null;
     private static Consumer<String> logCallback = null;
     private static Runnable healthCheckCallback = null;
+    private static Server grpcServer;
 
     public static void setLogCallback(Consumer<String> callback) {
         logCallback = callback;
@@ -38,17 +39,20 @@ public class OrquestradorCore {
         healthCheckCallback = callback;
     }
 
-    // VERSÃO CORRIGIDA DO MÉTODO
-    public static boolean tentarIniciarModoPrimario(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas, AtomicLong lamportClock) {
+    // ATUALIZADO: Assinatura do método agora inclui as sessões
+    public static boolean tentarIniciarModoPrimario(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas, Map<String, String> sessoesAtivas, AtomicLong lamportClock) {
         log("ATIVANDO MODO PRIMÁRIO...");
         try {
+            // ATUALIZADO: Carrega as sessões herdadas
+            OrquestradorServidor.AutenticacaoImpl.carregarSessoes(sessoesAtivas);
+
             OrquestradorServidor.GerenciadorTarefasImpl servicoTarefas = new OrquestradorServidor.GerenciadorTarefasImpl(workersAtivos, bancoDeTarefas, lamportClock);
             OrquestradorServidor.MonitoramentoImpl servicoMonitor = new OrquestradorServidor.MonitoramentoImpl(workersAtivos, bancoDeTarefas);
             servicoTarefas.setLogCallback(OrquestradorCore::log);
 
             iniciarServidorGrpc(servicoTarefas, servicoMonitor);
             iniciarVerificadorDeSaude(workersAtivos, bancoDeTarefas, lamportClock);
-            iniciarTransmissaoDeEstado(workersAtivos); // Corrigido para passar só workers
+            iniciarTransmissaoDeEstado(workersAtivos, bancoDeTarefas);
             iniciarTransmissorDeMonitoramento(servicoMonitor);
             iniciarReagendadorDeTarefas(bancoDeTarefas, servicoTarefas);
 
@@ -59,18 +63,29 @@ public class OrquestradorCore {
         }
     }
 
+    public static void pararServidorGrpc() {
+        if (grpcServer != null && !grpcServer.isShutdown()) {
+            try {
+                log("Desligando o servidor gRPC...");
+                grpcServer.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                grpcServer.shutdownNow();
+            }
+        }
+    }
+
     private static void iniciarServidorGrpc(OrquestradorServidor.GerenciadorTarefasImpl servicoTarefas, OrquestradorServidor.MonitoramentoImpl servicoMonitor) throws IOException {
-        Server server = ServerBuilder.forPort(GRPC_PORT)
+        grpcServer = ServerBuilder.forPort(GRPC_PORT)
                 .addService(servicoTarefas)
                 .addService(new OrquestradorServidor.AutenticacaoImpl())
                 .addService(servicoMonitor)
                 .addService(new OrquestradorServidor.HealthCheckImpl())
                 .build();
-        server.start();
+        grpcServer.start();
+        log("Servidor gRPC iniciado na porta " + GRPC_PORT);
         new Thread(() -> {
             try {
-                log("Servidor gRPC iniciado na porta " + GRPC_PORT);
-                server.awaitTermination();
+                grpcServer.awaitTermination();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -94,29 +109,25 @@ public class OrquestradorCore {
                 if (inativo) {
                     String workerIdFalho = entry.getKey();
                     log("Worker " + workerIdFalho + " considerado inativo. Removendo...");
-                    long tarefasReagendadas = bancoDeTarefas.values().stream()
+                    bancoDeTarefas.values().stream()
                             .filter(t -> workerIdFalho.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.EXECUTANDO)
-                            .peek(t -> {
+                            .forEach(t -> {
                                 log("Reagendando tarefa " + t.getId() + " do worker falho.");
                                 t.setStatus(StatusTarefa.AGUARDANDO);
                                 t.setWorkerIdAtual(null);
-                            })
-                            .count();
-                    if (tarefasReagendadas > 0) {
-                        log("Reagendadas " + tarefasReagendadas + " tarefas.");
-                    }
+                            });
                 }
                 return inativo;
             });
         }, 5, 5, TimeUnit.SECONDS);
     }
 
-    // VERSÃO CORRIGIDA DO MÉTODO
-    private static void iniciarTransmissaoDeEstado(Map<String, Long> workersAtivos) {
-        SincronizadorEstado transmissor = new SincronizadorEstado(workersAtivos);
+    private static void iniciarTransmissaoDeEstado(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas) {
+        SincronizadorEstado transmissor = new SincronizadorEstado(null, null, null);
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
-            transmissor.transmitirEstado(workersAtivos);
+            // Agora envia o estado completo
+            transmissor.transmitirEstado(workersAtivos, bancoDeTarefas, OrquestradorServidor.AutenticacaoImpl.sessoesAtivas);
             if (syncCallback != null) {
                 syncCallback.run();
             }
@@ -126,17 +137,10 @@ public class OrquestradorCore {
     private static void iniciarReagendadorDeTarefas(Map<String, Tarefa> bancoDeTarefas, OrquestradorServidor.GerenciadorTarefasImpl servico) {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
-            var tarefasAguardando = bancoDeTarefas.values().stream()
+            bancoDeTarefas.values().stream()
                     .filter(tarefa -> tarefa.getStatus() == StatusTarefa.AGUARDANDO)
                     .sorted(Comparator.comparing((Tarefa t) -> t.getPrioridade().getNivel()).reversed())
-                    .collect(Collectors.toList());
-
-            if (!tarefasAguardando.isEmpty()) {
-                log("[Reagendador] Tentando alocar " + tarefasAguardando.size() + " tarefas em espera.");
-                for (Tarefa tarefa : tarefasAguardando) {
-                    servico.distribuirTarefa(tarefa, null);
-                }
-            }
+                    .forEach(tarefa -> servico.distribuirTarefa(tarefa, null));
         }, 15, 15, TimeUnit.SECONDS);
     }
 }

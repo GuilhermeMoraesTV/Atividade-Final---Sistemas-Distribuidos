@@ -15,7 +15,6 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <main.class>br.edu.ifba.saj.orquestrador.OrquestradorApp</main.class>
     </properties>
 
     <dependencies>
@@ -68,7 +67,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>${main.class}</mainClass>
+                    <mainClass>br.edu.ifba.saj.orquestrador.OrquestradorApp</mainClass>
                 </configuration>
             </plugin>
         </plugins>
@@ -77,9 +76,18 @@
     <profiles>
         <profile>
             <id>run-backup</id>
-            <properties>
-                <main.class>br.edu.ifba.saj.orquestrador.OrquestradorBackup</main.class>
-            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <mainClass>br.edu.ifba.saj.orquestrador.OrquestradorBackup</mainClass>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

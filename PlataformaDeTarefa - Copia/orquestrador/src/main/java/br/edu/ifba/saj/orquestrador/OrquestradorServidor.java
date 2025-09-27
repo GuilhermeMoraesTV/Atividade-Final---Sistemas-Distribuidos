@@ -34,11 +34,21 @@ public class OrquestradorServidor {
 
     public static class AutenticacaoImpl extends AutenticacaoGrpc.AutenticacaoImplBase {
         public static final Map<String, String> usuariosDb = new ConcurrentHashMap<>(Map.of("user1", "pass1", "user2", "pass2"));
-        private static final Map<String, String> sessoesAtivas = new ConcurrentHashMap<>();
+        // Agora, este mapa será sincronizado
+        public static final Map<String, String> sessoesAtivas = new ConcurrentHashMap<>();
         private static Consumer<String> logCallback = null;
 
         public static void setLogCallback(Consumer<String> callback) { logCallback = callback; }
         private static void log(String msg) { if (logCallback != null) logCallback.accept(msg); System.out.println(msg); }
+
+        // NOVO MÉTODO: Permite restaurar as sessões após um failover
+        public static void carregarSessoes(Map<String, String> sessoesHerdadas) {
+            if (sessoesHerdadas != null) {
+                sessoesAtivas.clear();
+                sessoesAtivas.putAll(sessoesHerdadas);
+                log("Sessões de utilizador restauradas após failover: " + sessoesAtivas.size());
+            }
+        }
 
         @Override
         public void registrar(RegistroRequest request, StreamObserver<RegistroResponse> responseObserver) {
@@ -251,7 +261,6 @@ public class OrquestradorServidor {
             Tarefa tarefa = bancoDeTarefas.get(request.getTarefaId());
 
             if (tarefa != null && tarefa.getStatus() != StatusTarefa.CONCLUIDA) {
-                // CORREÇÃO: Garante que o worker que completou a tarefa seja o que está associado a ela.
                 tarefa.setWorkerIdAtual(request.getWorkerId());
                 tarefa.setStatus(StatusTarefa.CONCLUIDA);
                 log("[Clock: " + lamportClock.get() + "] TAREFA CONCLUÍDA: " + tarefa.getId() + " pelo worker " + request.getWorkerId());

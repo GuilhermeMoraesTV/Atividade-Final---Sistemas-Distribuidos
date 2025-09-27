@@ -7,6 +7,7 @@ import br.edu.ifba.saj.orquestrador.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -17,19 +18,17 @@ public class OrquestradorService {
     private final Map<String, Tarefa> bancoDeTarefas;
     private final AtomicLong lamportClock;
 
-    // Construtor Padrão (para o principal)
     public OrquestradorService() {
-        this.workersAtivos = new java.util.concurrent.ConcurrentHashMap<>();
-        this.bancoDeTarefas = new java.util.concurrent.ConcurrentHashMap<>();
+        this.workersAtivos = new ConcurrentHashMap<>();
+        this.bancoDeTarefas = new ConcurrentHashMap<>();
         this.lamportClock = new AtomicLong(0);
     }
 
-    // CONSTRUTOR DE FAILOVER CORRIGIDO (sem tarefas)
-    public OrquestradorService(Map<String, Long> workersHerdados, AtomicLong clockHerdado) {
+    public OrquestradorService(Map<String, Long> workersHerdados, Map<String, Tarefa> tarefasHerdadas, AtomicLong clockHerdado) {
         this.workersAtivos = workersHerdados;
+        this.bancoDeTarefas = tarefasHerdadas;
         this.lamportClock = clockHerdado;
-        this.bancoDeTarefas = new java.util.concurrent.ConcurrentHashMap<>(); // Tarefas começam vazias
-        this.servidorAtivo = true; // Servidor já inicia ativo no failover
+        this.servidorAtivo = true;
     }
 
     private Runnable syncCallback = null;
@@ -62,7 +61,16 @@ public class OrquestradorService {
                     OrquestradorCore.setLogCallback(this::log);
                     OrquestradorCore.setSyncCallback(this.syncCallback);
                     OrquestradorCore.setHealthCheckCallback(this.healthCheckCallback);
-                    OrquestradorCore.tentarIniciarModoPrimario(workersAtivos, bancoDeTarefas, lamportClock);
+
+                    // ** LINHA CORRIGIDA **
+                    // Agora passamos o mapa de sessões ativas para o método, conforme a nova assinatura.
+                    OrquestradorCore.tentarIniciarModoPrimario(
+                            workersAtivos,
+                            bancoDeTarefas,
+                            OrquestradorServidor.AutenticacaoImpl.sessoesAtivas, // Argumento que faltava
+                            lamportClock
+                    );
+
                     servidorAtivo = true;
                     log("✅ Orquestrador ATIVO na porta 50050");
                 } catch (Exception e) {
@@ -73,8 +81,10 @@ public class OrquestradorService {
     }
 
     public void pararServidor() {
-        servidorAtivo = false;
-        // Não limpa os mapas aqui para o failover funcionar
+        if(servidorAtivo){
+            OrquestradorCore.pararServidorGrpc();
+            servidorAtivo = false;
+        }
     }
 
     public boolean isServidorAtivo() {
@@ -103,12 +113,12 @@ public class OrquestradorService {
                 .map(entry -> {
                     String workerId = entry.getKey();
                     long ultimoHeartbeat = entry.getValue();
-                    long tarefasConcluidas = bancoDeTarefas.values().stream()
-                            .filter(t -> workerId.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.CONCLUIDA)
+                    long tarefasNoWorker = bancoDeTarefas.values().stream()
+                            .filter(t -> workerId.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.EXECUTANDO)
                             .count();
                     String status = (agora - ultimoHeartbeat < 15000) ? "ATIVO" : "INATIVO";
                     String ultimoHeartbeatStr = formatarTempo(ultimoHeartbeat);
-                    return new WorkerModel(workerId, status, (int) tarefasConcluidas, ultimoHeartbeatStr);
+                    return new WorkerModel(workerId, status, (int) tarefasNoWorker, ultimoHeartbeatStr);
                 })
                 .collect(Collectors.toList());
     }
