@@ -22,8 +22,9 @@ import javafx.concurrent.Task;
 import javafx.scene.layout.HBox;
 import javafx.util.Duration;
 
+
 public class OrquestradorController {
-    // ... (declarações @FXML)
+    // ... (declarações @FXML e de variáveis) ...
     @FXML private Label statusServidorLabel;
     @FXML private Label totalWorkersLabel;
     @FXML private Label totalTarefasLabel;
@@ -59,9 +60,7 @@ public class OrquestradorController {
     @FXML private Button pararServidorBtn;
     @FXML private Button limparLogBtn;
 
-    // Flag para controlar o modo de operação
     private boolean isFailoverMode = false;
-
     private final OrquestradorService orquestradorService = new OrquestradorService();
     private final ObservableList<WorkerModel> workersData = FXCollections.observableArrayList();
     private final ObservableList<TarefaModel> tarefasData = FXCollections.observableArrayList();
@@ -78,14 +77,12 @@ public class OrquestradorController {
     private Task<Void> servidorTask;
     private Task<Void> atualizadorTask;
 
-    // Método para a classe App definir o modo antes de qualquer coisa
     public void setFailoverMode(boolean isFailover) {
         this.isFailoverMode = isFailover;
     }
 
     @FXML
     public void initialize() {
-        // A inicialização agora só configura os componentes
         configurarTabelas();
         configurarGrafico();
         configurarLog();
@@ -93,9 +90,9 @@ public class OrquestradorController {
         iniciarAtualizacaoAutomatica();
     }
 
-    // NOVO MÉTODO: Aplica a lógica depois que o modo já foi definido
     public void setupApplicationMode() {
         if (isFailoverMode) {
+            // A UI foi lançada pelo backup promovido
             Platform.runLater(() -> {
                 adicionarLog("FAILOVER DETECTADO! Esta GUI está monitorando o orquestrador de backup promovido.");
                 iniciarServidorBtn.setText("Monitorando");
@@ -103,6 +100,7 @@ public class OrquestradorController {
                 pararServidorBtn.setDisable(true);
             });
         } else {
+            // A UI é a principal
             adicionarLog("Interface do orquestrador inicializada em modo primário.");
         }
     }
@@ -150,8 +148,11 @@ public class OrquestradorController {
             statusServidorLabel.getStyleClass().removeAll("status-ativo", "status-inativo");
             statusServidorLabel.getStyleClass().add(servidorAtivo ? "status-ativo" : "status-inativo");
 
-            iniciarServidorBtn.setDisable(servidorAtivo);
-            pararServidorBtn.setDisable(!servidorAtivo);
+            // A lógica de desabilitar os botões é ajustada para o modo failover
+            if (!isFailoverMode) {
+                iniciarServidorBtn.setDisable(servidorAtivo);
+                pararServidorBtn.setDisable(!servidorAtivo);
+            }
 
             totalWorkersLabel.setText(String.valueOf(orquestradorService.getTotalWorkers()));
             totalTarefasLabel.setText(String.valueOf(orquestradorService.getTotalTarefas()));
@@ -196,7 +197,6 @@ public class OrquestradorController {
         atualizadorThread.start();
     }
 
-    // O restante do seu código permanece o mesmo...
 
     @FXML
     private void iniciarServidor() {
@@ -232,7 +232,6 @@ public class OrquestradorController {
         };
         new Thread(servidorTask).start();
     }
-
     private void dispararAnimacaoHealthCheck() {
         Platform.runLater(() -> {
             FadeTransition fadeIn = new FadeTransition(Duration.millis(100), healthCheckStatusBox);
@@ -304,7 +303,6 @@ public class OrquestradorController {
         adicionarLog("Atualizando dados manualmente...");
         atualizarInterface();
     }
-
     public void adicionarLog(String mensagem) {
         Platform.runLater(() -> {
             String timestamp = java.time.LocalDateTime.now().format(

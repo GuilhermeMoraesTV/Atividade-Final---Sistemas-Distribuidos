@@ -68,6 +68,7 @@ public class OrquestradorCore {
                 .addService(servicoTarefas)
                 .addService(new OrquestradorServidor.AutenticacaoImpl())
                 .addService(servicoMonitor)
+                .addService(new OrquestradorServidor.HealthCheckImpl())
                 .build();
         server.start();
 

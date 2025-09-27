@@ -6,6 +6,8 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.health.v1.HealthCheckResponse;
+import io.grpc.health.v1.HealthGrpc;
 import io.grpc.stub.StreamObserver;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,6 +26,15 @@ public class OrquestradorServidor {
     public static void main(String[] args) {
         System.out.println("Iniciando Orquestrador Principal...");
         OrquestradorCore.tentarIniciarModoPrimario(workersAtivos, bancoDeTarefas, lamportClock);
+    }
+
+    public static class HealthCheckImpl extends HealthGrpc.HealthImplBase {
+        @Override
+        public void check(io.grpc.health.v1.HealthCheckRequest request,
+                          io.grpc.stub.StreamObserver<io.grpc.health.v1.HealthCheckResponse> responseObserver) {
+            responseObserver.onNext(HealthCheckResponse.newBuilder().setStatus(HealthCheckResponse.ServingStatus.SERVING).build());
+            responseObserver.onCompleted();
+        }
     }
 
     public static class AutenticacaoImpl extends AutenticacaoGrpc.AutenticacaoImplBase {
