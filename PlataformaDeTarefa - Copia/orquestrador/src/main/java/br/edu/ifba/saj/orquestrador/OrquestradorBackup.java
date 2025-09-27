@@ -22,11 +22,13 @@ public class OrquestradorBackup extends Application {
 
     private static final Map<String, Long> estadoWorkers = new ConcurrentHashMap<>();
     private static final Map<String, Tarefa> bancoDeTarefas = new ConcurrentHashMap<>();
-    // ATUALIZADO: Adicionado mapa para o estado das sessões
     private static final Map<String, String> estadoSessoes = new ConcurrentHashMap<>();
     private static final AtomicLong lamportClock = new AtomicLong(0);
     private static final long TIMEOUT_PRIMARIO_MS = 15000;
     private static final int FALHAS_PARA_FAILOVER = 3;
+
+    private SincronizadorEstado sinc;
+    private OrquestradorController failoverController;
 
     public static void main(String[] args) {
         System.out.println("--- ORQUESTRADOR DE BACKUP (MODO HÍBRIDO) ---");
@@ -49,8 +51,9 @@ public class OrquestradorBackup extends Application {
             }
             log("Orquestrador Principal detectado. Iniciando monitoramento.");
 
-            // ATUALIZADO: O sincronizador agora gerencia todo o estado
-            SincronizadorEstado sinc = new SincronizadorEstado(estadoWorkers, bancoDeTarefas, estadoSessoes);
+            sinc = new SincronizadorEstado(estadoWorkers, bancoDeTarefas, estadoSessoes);
+            sinc.setLogCallback(this::log);
+            sinc.setSyncCallback(this::dispararAnimacaoSyncNaUI);
             sinc.start();
 
             int contadorFalhas = 0;
@@ -84,7 +87,7 @@ public class OrquestradorBackup extends Application {
     private void executarFailover() {
         log("INICIANDO PROCESSO DE FAILOVER...");
         try {
-            // ATUALIZADO: Passa todo o estado herdado para o novo primário
+            // Inicia o núcleo SEM os callbacks da UI, pois ela ainda não existe.
             boolean sucesso = OrquestradorCore.tentarIniciarModoPrimario(estadoWorkers, bancoDeTarefas, estadoSessoes, lamportClock);
 
             if (sucesso) {
@@ -92,6 +95,7 @@ public class OrquestradorBackup extends Application {
                 log("Workers sincronizados: " + estadoWorkers.size());
                 log("Tarefas sincronizadas: " + bancoDeTarefas.size());
                 log("Sessões sincronizadas: " + estadoSessoes.size());
+                // Lança a UI, que por sua vez, vai se conectar ao núcleo.
                 Platform.runLater(this::launchFailoverUI);
             } else {
                 log("FALHA CRÍTICA ao iniciar núcleo. Encerrando.");
@@ -106,15 +110,23 @@ public class OrquestradorBackup extends Application {
     private void launchFailoverUI() {
         try {
             log("Lançando interface gráfica com estado herdado...");
-            // Cria um OrquestradorService JÁ COM O ESTADO HERDADO
             OrquestradorService serviceComEstado = new OrquestradorService(estadoWorkers, bancoDeTarefas, lamportClock);
 
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/br.edu.ifba.saj.orquestrador/view/OrquestradorView.fxml"));
             Parent root = loader.load();
-            OrquestradorController controller = loader.getController();
+            failoverController = loader.getController();
 
-            // Passa o serviço com o estado para o controller da UI
-            controller.initFailoverState(serviceComEstado);
+            // Injeta o serviço com o estado inicial no controller
+            failoverController.initFailoverState(serviceComEstado, this::log, this::dispararAnimacaoSyncNaUI, this::dispararAnimacaoHealthCheckNaUI);
+
+            // ================== PONTO CRÍTICO DA CORREÇÃO ==================
+            // Agora que a UI e o controller existem, conectamos seus métodos ao Core.
+            OrquestradorCore.reconnectUICallbacks(
+                    failoverController::adicionarLog, // Conecta o log da UI
+                    failoverController::dispararAnimacaoSync, // Conecta a animação de sync
+                    failoverController::dispararAnimacaoHealthCheck // Conecta a animação de heartbeat
+            );
+            // ================================================================
 
             Stage stage = new Stage();
             stage.setTitle("Dashboard do Orquestrador - MODO FAILOVER (Promovido)");
@@ -132,34 +144,36 @@ public class OrquestradorBackup extends Application {
         }
     }
 
+    private void dispararAnimacaoSyncNaUI() {
+        if (failoverController != null) {
+            failoverController.dispararAnimacaoSync();
+        }
+    }
+
+    private void dispararAnimacaoHealthCheckNaUI() {
+        if (failoverController != null) {
+            failoverController.dispararAnimacaoHealthCheck();
+        }
+    }
+
+
     private boolean isPrimaryActive() {
-        ManagedChannel channel = null; // Declare o canal fora do bloco try
+        ManagedChannel channel = null;
         try {
-            // Crie o canal
             channel = ManagedChannelBuilder.forAddress("localhost", 50050)
                     .usePlaintext()
                     .build();
-
-            // Crie o stub para o serviço de Health Check
             HealthGrpc.HealthBlockingStub stub = HealthGrpc.newBlockingStub(channel)
-                    .withDeadlineAfter(1, TimeUnit.SECONDS); // Define um timeout curto
-
-            // Faça a chamada. Se falhar, lançará uma exceção.
+                    .withDeadlineAfter(1, TimeUnit.SECONDS);
             stub.check(HealthCheckRequest.newBuilder().build());
-
-            // Se chegou até aqui, a chamada foi bem-sucedida.
             return true;
         } catch (Exception e) {
-            // Qualquer exceção (timeout, conexão recusada, etc.) significa que o principal não está ativo.
             return false;
         } finally {
-            // O bloco finally SEMPRE é executado, garantindo que o canal seja fechado.
             if (channel != null) {
                 try {
-                    // Tenta um encerramento gracioso por 1 segundo
                     channel.shutdown().awaitTermination(1, TimeUnit.SECONDS);
                 } catch (InterruptedException interruptedException) {
-                    // Se a thread for interrompida, força o encerramento
                     channel.shutdownNow();
                     Thread.currentThread().interrupt();
                 }
@@ -178,5 +192,8 @@ public class OrquestradorBackup extends Application {
     private void log(String mensagem) {
         String timestamp = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalDateTime.now());
         System.out.println("[" + timestamp + "] [BACKUP] " + mensagem);
+        if (failoverController != null) {
+            Platform.runLater(() -> failoverController.adicionarLog("[BACKUP] " + mensagem));
+        }
     }
 }

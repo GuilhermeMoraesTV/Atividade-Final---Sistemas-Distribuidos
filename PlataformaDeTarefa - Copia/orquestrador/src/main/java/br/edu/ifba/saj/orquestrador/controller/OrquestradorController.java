@@ -21,6 +21,7 @@ import javafx.scene.chart.PieChart;
 import javafx.concurrent.Task;
 import javafx.scene.layout.HBox;
 import javafx.util.Duration;
+import java.util.function.Consumer;
 
 
 public class OrquestradorController {
@@ -61,7 +62,7 @@ public class OrquestradorController {
     @FXML private Button limparLogBtn;
 
     private boolean isFailoverMode = false;
-    private OrquestradorService orquestradorService = new OrquestradorService();
+    private OrquestradorService orquestradorService; // Removido o "= new OrquestradorService()"
     private final ObservableList<WorkerModel> workersData = FXCollections.observableArrayList();
     private final ObservableList<TarefaModel> tarefasData = FXCollections.observableArrayList();
     private final ObservableList<UsuarioModel> usuariosData = FXCollections.observableArrayList();
@@ -83,7 +84,7 @@ public class OrquestradorController {
 
     @FXML
     public void initialize() {
-
+        // A inicialização do serviço agora é feita externamente
         if (this.orquestradorService == null) {
             this.orquestradorService = new OrquestradorService();
         }
@@ -96,7 +97,6 @@ public class OrquestradorController {
 
     public void setupApplicationMode() {
         if (isFailoverMode) {
-            // A UI foi lançada pelo backup promovido
             Platform.runLater(() -> {
                 adicionarLog("FAILOVER DETECTADO! Esta GUI está monitorando o orquestrador de backup promovido.");
                 iniciarServidorBtn.setText("Monitorando");
@@ -104,7 +104,6 @@ public class OrquestradorController {
                 pararServidorBtn.setDisable(true);
             });
         } else {
-            // A UI é a principal
             adicionarLog("Interface do orquestrador inicializada em modo primário.");
         }
     }
@@ -140,12 +139,16 @@ public class OrquestradorController {
         atualizarGrafico();
     }
 
-    public void initFailoverState(OrquestradorService serviceComEstado) {
+    // MÉTODO ATUALIZADO para receber os callbacks
+    public void initFailoverState(OrquestradorService serviceComEstado, Consumer<String> logCallback, Runnable syncCallback, Runnable healthCheckCallback) {
         this.orquestradorService = serviceComEstado;
-        // Configura a UI para refletir o estado de failover
+        this.orquestradorService.setLogCallback(logCallback); // Conecta o log
+        this.orquestradorService.setSyncCallback(syncCallback); // Conecta a animação de sync
+        this.orquestradorService.setHealthCheckCallback(healthCheckCallback); // Conecta a animação de heartbeat
         setFailoverMode(true);
         setupApplicationMode();
     }
+
 
     private void configurarLog() {
         logListView.setItems(logData);
@@ -160,7 +163,6 @@ public class OrquestradorController {
             statusServidorLabel.getStyleClass().removeAll("status-ativo", "status-inativo");
             statusServidorLabel.getStyleClass().add(servidorAtivo ? "status-ativo" : "status-inativo");
 
-            // A lógica de desabilitar os botões é ajustada para o modo failover
             if (!isFailoverMode) {
                 iniciarServidorBtn.setDisable(servidorAtivo);
                 pararServidorBtn.setDisable(!servidorAtivo);
@@ -223,9 +225,9 @@ public class OrquestradorController {
                 try {
                     Platform.runLater(() -> adicionarLog("Iniciando servidor do orquestrador..."));
 
+                    // A UI principal configura os callbacks diretamente no serviço
                     orquestradorService.setSyncCallback(OrquestradorController.this::dispararAnimacaoSync);
                     orquestradorService.setHealthCheckCallback(OrquestradorController.this::dispararAnimacaoHealthCheck);
-
                     orquestradorService.setLogCallback(OrquestradorController.this::adicionarLog);
                     orquestradorService.iniciarServidor();
 
@@ -244,7 +246,9 @@ public class OrquestradorController {
         };
         new Thread(servidorTask).start();
     }
-    private void dispararAnimacaoHealthCheck() {
+
+    // MÉTODO AGORA PÚBLICO para ser chamado externamente
+    public void dispararAnimacaoHealthCheck() {
         Platform.runLater(() -> {
             FadeTransition fadeIn = new FadeTransition(Duration.millis(100), healthCheckStatusBox);
             fadeIn.setFromValue(0.0);
@@ -269,7 +273,8 @@ public class OrquestradorController {
         });
     }
 
-    private void dispararAnimacaoSync() {
+    // MÉTODO AGORA PÚBLICO para ser chamado externamente
+    public void dispararAnimacaoSync() {
         Platform.runLater(() -> {
             Timeline timeline = new Timeline(
                     new KeyFrame(Duration.ZERO, new KeyValue(syncProgressBar.progressProperty(), 0)),
@@ -325,31 +330,28 @@ public class OrquestradorController {
             String title = "Informação do Sistema";
             String details = mensagem;
 
-            // Filtra mensagens repetitivas que causam lentidão
             if (mensagem.contains("Workers ativos:") && mensagem.contains("Tarefas no sistema:")) {
-                return; // Ignora logs repetitivos de status
+                return;
             }
 
             try {
                 if (mensagem.contains("NOVA TAREFA")) {
                     level = LogEntry.LogLevel.TASK_SUBMITTED;
                     title = "Nova Tarefa Recebida";
-                    // CORREÇÃO: Verifica se há split válido
                     String[] parts = mensagem.split("↳");
                     if (parts.length > 1) {
                         details = parts[1].trim();
                     } else {
-                        details = mensagem; // Usa mensagem completa se split falhar
+                        details = mensagem;
                     }
                 } else if (mensagem.contains("TAREFA CONCLUÍDA")) {
                     level = LogEntry.LogLevel.TASK_COMPLETED;
                     title = "Tarefa Finalizada pelo Worker";
-                    // CORREÇÃO: Verifica se há split válido
                     String[] parts = mensagem.split("↳");
                     if (parts.length > 1) {
                         details = parts[1].trim();
                     } else {
-                        details = mensagem; // Usa mensagem completa se split falhar
+                        details = mensagem;
                     }
                 } else if (mensagem.contains("DISTRIBUINDO")) {
                     level = LogEntry.LogLevel.TASK_DISTRIBUTED;
@@ -438,24 +440,25 @@ public class OrquestradorController {
                     } else {
                         details = mensagem;
                     }
+                } else if (mensagem.contains("[SYNC]")) {
+                    level = LogEntry.LogLevel.HEALTH_CHECK; // Reutilizando um ícone
+                    title = "Sincronização de Backup";
+                    details = mensagem.substring(mensagem.indexOf("]") + 1).trim();
                 }
 
-                // Adiciona o log apenas se não estiver duplicado
+
                 LogEntry newEntry = new LogEntry(timestamp, title, details, level);
 
-                // Evita logs duplicados consecutivos
                 if (logData.isEmpty() || !logData.get(logData.size() - 1).getMessage().equals(details)) {
                     logData.add(newEntry);
                     logListView.scrollTo(logData.size() - 1);
                 }
 
-                // Limita o tamanho do log para evitar consumo excessivo de memória
-                if (logData.size() > 100) { // Reduzido de 200 para 100
+                if (logData.size() > 100) {
                     logData.remove(0);
                 }
 
             } catch (Exception e) {
-                // Se houver erro no parsing, adiciona log simples
                 logData.add(new LogEntry(timestamp, "Sistema", mensagem, LogEntry.LogLevel.INFO));
                 System.err.println("Erro no parsing de log: " + e.getMessage());
             }

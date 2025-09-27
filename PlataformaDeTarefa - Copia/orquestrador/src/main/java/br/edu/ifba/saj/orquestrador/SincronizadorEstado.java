@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class SincronizadorEstado extends Thread {
     private static final String MULTICAST_ADDRESS = "230.0.0.0";
@@ -22,8 +23,9 @@ public class SincronizadorEstado extends Thread {
     private final Map<String, String> sessoesAtivas;
 
     private volatile long ultimoEstadoRecebido = System.currentTimeMillis();
+    private Consumer<String> logCallback;
+    private Runnable syncCallback;
 
-    // Construtor ATUALIZADO para receber todo o estado
     public SincronizadorEstado(Map<String, Long> estadoWorkers, Map<String, Tarefa> bancoDeTarefas, Map<String, String> sessoesAtivas) {
         this.estadoWorkers = estadoWorkers;
         this.bancoDeTarefas = bancoDeTarefas;
@@ -31,6 +33,11 @@ public class SincronizadorEstado extends Thread {
         this.setName("SincronizadorEstado-Thread");
         this.setDaemon(true);
     }
+
+    // Métodos para configurar os callbacks
+    public void setLogCallback(Consumer<String> callback) { this.logCallback = callback; }
+    public void setSyncCallback(Runnable callback) { this.syncCallback = callback; }
+
 
     @Override
     public void run() {
@@ -80,6 +87,11 @@ public class SincronizadorEstado extends Thread {
                 }
             }
             ultimoEstadoRecebido = System.currentTimeMillis();
+
+            // Dispara os callbacks após receber um estado
+            if(syncCallback != null) syncCallback.run();
+            log("Estado sincronizado recebido do Orquestrador Primário.");
+
         } catch (Exception e) {
             log("⚠️ Erro ao processar pacote de sincronização: " + e.getMessage());
         }
@@ -109,12 +121,18 @@ public class SincronizadorEstado extends Thread {
 
     private void log(String mensagem) {
         String timestamp = java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalDateTime.now());
-        System.out.println("[" + timestamp + "] [SYNC] " + mensagem);
+        String logMessage = "[" + timestamp + "] [SYNC] " + mensagem;
+
+        System.out.println(logMessage);
+
+        if (logCallback != null) {
+            logCallback.accept(logMessage);
+        }
     }
 
     private static class EstadoSincronizado {
         public Map<String, Long> workers;
         public Map<String, Tarefa> tarefas;
-        public Map<String, String> sessoes; // Adicionado
+        public Map<String, String> sessoes;
     }
 }

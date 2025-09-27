@@ -62,12 +62,10 @@ public class OrquestradorService {
                     OrquestradorCore.setSyncCallback(this.syncCallback);
                     OrquestradorCore.setHealthCheckCallback(this.healthCheckCallback);
 
-                    // ** LINHA CORRIGIDA **
-                    // Agora passamos o mapa de sessões ativas para o método, conforme a nova assinatura.
                     OrquestradorCore.tentarIniciarModoPrimario(
                             workersAtivos,
                             bancoDeTarefas,
-                            OrquestradorServidor.AutenticacaoImpl.sessoesAtivas, // Argumento que faltava
+                            OrquestradorServidor.AutenticacaoImpl.sessoesAtivas,
                             lamportClock
                     );
 
@@ -113,9 +111,16 @@ public class OrquestradorService {
                 .map(entry -> {
                     String workerId = entry.getKey();
                     long ultimoHeartbeat = entry.getValue();
+
+                    // ================== PONTO CRÍTICO DA CORREÇÃO ==================
+                    // A condição '&& t.getStatus() == StatusTarefa.EXECUTANDO' foi removida.
+                    // Agora, ele conta todas as tarefas (em execução E concluídas)
+                    // que foram atribuídas a este worker.
                     long tarefasNoWorker = bancoDeTarefas.values().stream()
-                            .filter(t -> workerId.equals(t.getWorkerIdAtual()) && t.getStatus() == StatusTarefa.EXECUTANDO)
+                            .filter(t -> workerId.equals(t.getWorkerIdAtual()))
                             .count();
+                    // ================================================================
+
                     String status = (agora - ultimoHeartbeat < 15000) ? "ATIVO" : "INATIVO";
                     String ultimoHeartbeatStr = formatarTempo(ultimoHeartbeat);
                     return new WorkerModel(workerId, status, (int) tarefasNoWorker, ultimoHeartbeatStr);

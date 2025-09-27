@@ -21,6 +21,11 @@ public class OrquestradorCore {
     private static Runnable healthCheckCallback = null;
     private static Server grpcServer;
 
+    // Manter referências aos serviços para reconectar os callbacks
+    private static OrquestradorServidor.GerenciadorTarefasImpl servicoTarefasGlobal;
+    private static OrquestradorServidor.MonitoramentoImpl servicoMonitorGlobal;
+
+
     public static void setLogCallback(Consumer<String> callback) {
         logCallback = callback;
     }
@@ -39,22 +44,48 @@ public class OrquestradorCore {
         healthCheckCallback = callback;
     }
 
-    // ATUALIZADO: Assinatura do método agora inclui as sessões
+    // ================== NOVO MÉTODO ADICIONADO ==================
+    /**
+     * Permite que uma UI iniciada após o failover conecte seus callbacks
+     * ao núcleo de serviços que já está em execução.
+     */
+    public static void reconnectUICallbacks(Consumer<String> newLogCallback, Runnable newSyncCallback, Runnable newHealthCheckCallback) {
+        log("Reconectando callbacks da interface gráfica pós-failover...");
+        setLogCallback(newLogCallback);
+        setSyncCallback(newSyncCallback);
+        setHealthCheckCallback(newHealthCheckCallback);
+
+        // Propaga o log callback para os serviços já instanciados
+        if (servicoTarefasGlobal != null) {
+            servicoTarefasGlobal.setLogCallback(OrquestradorCore::log);
+        }
+        if (servicoMonitorGlobal != null) {
+            servicoMonitorGlobal.setLogCallback(OrquestradorCore::log);
+        }
+        log("Callbacks da UI reconectados com sucesso.");
+    }
+    // ============================================================
+
+
     public static boolean tentarIniciarModoPrimario(Map<String, Long> workersAtivos, Map<String, Tarefa> bancoDeTarefas, Map<String, String> sessoesAtivas, AtomicLong lamportClock) {
         log("ATIVANDO MODO PRIMÁRIO...");
         try {
-            // ATUALIZADO: Carrega as sessões herdadas
             OrquestradorServidor.AutenticacaoImpl.carregarSessoes(sessoesAtivas);
 
-            OrquestradorServidor.GerenciadorTarefasImpl servicoTarefas = new OrquestradorServidor.GerenciadorTarefasImpl(workersAtivos, bancoDeTarefas, lamportClock);
-            OrquestradorServidor.MonitoramentoImpl servicoMonitor = new OrquestradorServidor.MonitoramentoImpl(workersAtivos, bancoDeTarefas);
-            servicoTarefas.setLogCallback(OrquestradorCore::log);
+            // Atribui os serviços às variáveis globais
+            servicoTarefasGlobal = new OrquestradorServidor.GerenciadorTarefasImpl(workersAtivos, bancoDeTarefas, lamportClock);
+            servicoMonitorGlobal = new OrquestradorServidor.MonitoramentoImpl(workersAtivos, bancoDeTarefas);
 
-            iniciarServidorGrpc(servicoTarefas, servicoMonitor);
+            // Garante que o log callback (mesmo que seja nulo no início do failover) seja setado
+            servicoTarefasGlobal.setLogCallback(OrquestradorCore::log);
+            servicoMonitorGlobal.setLogCallback(OrquestradorCore::log);
+
+
+            iniciarServidorGrpc(servicoTarefasGlobal, servicoMonitorGlobal);
             iniciarVerificadorDeSaude(workersAtivos, bancoDeTarefas, lamportClock);
             iniciarTransmissaoDeEstado(workersAtivos, bancoDeTarefas);
-            iniciarTransmissorDeMonitoramento(servicoMonitor);
-            iniciarReagendadorDeTarefas(bancoDeTarefas, servicoTarefas);
+            iniciarTransmissorDeMonitoramento(servicoMonitorGlobal);
+            iniciarReagendadorDeTarefas(bancoDeTarefas, servicoTarefasGlobal);
 
             return true;
         } catch (IOException e) {
@@ -101,7 +132,7 @@ public class OrquestradorCore {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
             if (healthCheckCallback != null) {
-                healthCheckCallback.run();
+                healthCheckCallback.run(); // <- Isso dispara a animação de heartbeat
             }
             long agora = System.currentTimeMillis();
             workersAtivos.entrySet().removeIf(entry -> {
@@ -126,7 +157,6 @@ public class OrquestradorCore {
         SincronizadorEstado transmissor = new SincronizadorEstado(null, null, null);
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
-            // Agora envia o estado completo
             transmissor.transmitirEstado(workersAtivos, bancoDeTarefas, OrquestradorServidor.AutenticacaoImpl.sessoesAtivas);
             if (syncCallback != null) {
                 syncCallback.run();
