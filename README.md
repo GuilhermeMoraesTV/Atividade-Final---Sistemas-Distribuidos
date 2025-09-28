@@ -1,4 +1,3 @@
-
 # Plataforma Distribuída de Processamento Colaborativo de Tarefas
 
 ## Sobre o Projeto
@@ -40,7 +39,8 @@ Antes de compilar e executar, verifique se possui instalado:
 
    ```sh
    git clone <url-do-seu-repositorio>
-   ```
+
+
 2. **Acesse a pasta raiz do projeto:**
 
    ```sh
@@ -56,7 +56,10 @@ Antes de compilar e executar, verifique se possui instalado:
 
 ## Execução
 
-⚠️ **Importante:** cada componente deve ser iniciado em **um terminal separado**, pois são processos independentes.
+⚠️ **Importante:**
+
+* Cada componente deve ser iniciado em **um terminal separado**, pois são processos independentes.
+* **Certifique-se de carregar o Maven antes de iniciar cada módulo.**
 
 ### 1. Iniciar o Orquestrador Principal (Terminal 1)
 
@@ -154,5 +157,16 @@ No Linux/macOS:
 pkill -9 java
 ```
 
----
+### Erros com `Grpc`
+
+Se aparecerem erros relacionados a dependências `Grpc` durante a execução ou compilação (ex.: linhas de importação não reconhecidas), execute:
+
+```sh
+mvn clean install -U
+```
+
+ou recarregue o projeto pelo **Maven Reload** no seu IDE (ex.: IntelliJ ou Eclipse).
+
+```
+
 
