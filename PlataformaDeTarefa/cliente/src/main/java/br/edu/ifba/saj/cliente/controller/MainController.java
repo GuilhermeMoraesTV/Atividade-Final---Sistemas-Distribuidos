@@ -66,7 +66,7 @@ public class MainController {
         this.usuarioLogadoLabel.setText("Olá, " + nomeUsuario);
 
         // Inscreve este controller para receber atualizações de tarefas em tempo real do servidor.
-        clienteService.inscreverParaAtualizações(this::onTarefaUpdate);
+        clienteService.inscreverParaAtualizacoes(this::onTarefaUpdate);
         // Carrega a lista inicial de tarefas do usuário.
         atualizarTabelaTarefas();
     }
@@ -525,4 +525,5 @@ public class MainController {
             }
         }).start();
     }
+
 }
