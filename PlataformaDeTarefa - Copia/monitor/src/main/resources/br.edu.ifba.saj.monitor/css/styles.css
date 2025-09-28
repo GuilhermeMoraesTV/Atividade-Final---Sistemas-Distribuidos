@@ -1,9 +1,0 @@
-.root { -fx-font-family: 'Segoe UI', sans-serif; -fx-background-color: #f4f7fa; }
-.header { -fx-background-color: #2c3e50; -fx-padding: 15; -fx-spacing: 5; }
-.header .label { -fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white; }
-.header .sub-label { -fx-text-fill: #27ae60; }
-.content-title { -fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50; }
-.table-view { -fx-border-color: #dfe4e8; -fx-border-radius: 5; }
-.table-view .column-header-background { -fx-background-color: #f4f7fa; -fx-border-color: transparent transparent #dfe4e8 transparent; }
-.table-view .column-header .label { -fx-text-fill: #555; -fx-font-weight: bold; }
-.table-row-cell:selected { -fx-background-color: #d6eaff; }
