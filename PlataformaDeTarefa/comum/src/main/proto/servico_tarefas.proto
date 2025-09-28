@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "br.edu.ifba.saj.protocolo";
+option java_outer_classname = "ServicoTarefasProto";
+
+package protocolo;
+
+// --- MENSAGENS ---
+
+message WorkerInfo {
+    string worker_id = 1;
+    string status = 2;
+    int32 tarefas_executando = 3;
+}
+
+message EstadoGeral {
+    string orquestrador_ativo_id = 1;
+    repeated WorkerInfo workers = 2;
+    repeated TarefaInfo tarefas = 3;
+}
+
+message LoginRequest {
+    string usuario = 1;
+    string senha = 2;
+}
+
+message LoginResponse {
+    string token_sessao = 1;
+}
+
+message RegistroRequest {
+    string novo_usuario = 1;
+    string nova_senha = 2;
+}
+
+message RegistroResponse {
+    bool sucesso = 1;
+    string mensagem = 2;
+}
+
+message SubmeterTarefaRequest {
+    string dados_tarefa = 1;
+    int64 lamport_timestamp = 2;
+    string token_sessao = 3;
+    string tarefa_id = 4;
+}
+
+message SubmeterTarefaResponse {
+    string tarefa_id = 1;
+    string mensagem_status = 2;
+}
+
+message HeartbeatRequest {
+    string worker_id = 1;
+    int32 tarefas_em_execucao = 2;
+    int64 lamport_timestamp = 3;
+}
+
+message HeartbeatResponse {
+    bool recebido = 1;
+}
+
+message FinalizarTarefaRequest {
+    string tarefa_id = 1;
+    string worker_id = 2;
+    int64 lamport_timestamp = 3;
+}
+
+message FinalizarTarefaResponse {
+    bool sucesso = 1;
+}
+
+message ConsultarStatusRequest {
+    string token_sessao = 1;
+}
+
+message TarefaInfo {
+    string id = 1;
+    string descricao = 2;
+    string status = 3;
+    string worker_id = 4;
+}
+
+message ConsultarStatusResponse {
+    repeated TarefaInfo tarefas = 1;
+}
+
+message InscricaoRequest {
+    string token_sessao = 1;
+}
+
+// --- SERVIÇOS ---
+
+service Autenticacao {
+    rpc Login(LoginRequest) returns (LoginResponse) {}
+    rpc Registrar(RegistroRequest) returns (RegistroResponse) {}
+}
+
+service GerenciadorTarefas {
+    rpc SubmeterTarefa(SubmeterTarefaRequest) returns (SubmeterTarefaResponse) {}
+    rpc EnviarHeartbeat(HeartbeatRequest) returns (HeartbeatResponse) {}
+    rpc FinalizarTarefa(FinalizarTarefaRequest) returns (FinalizarTarefaResponse) {}
+    rpc ConsultarStatusTarefas(ConsultarStatusRequest) returns (ConsultarStatusResponse) {}
+    rpc InscreverParaAtualizacoes(InscricaoRequest) returns (stream TarefaInfo) {}
+}
+
+service Monitoramento {
+    rpc InscreverParaEstadoGeral(google.protobuf.Empty) returns (stream EstadoGeral) {}
+}

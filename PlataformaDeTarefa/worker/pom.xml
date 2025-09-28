@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>br.edu.ifba.saj</groupId>
+        <artifactId>plataforma-distribuida</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>worker</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>br.edu.ifba.saj</groupId>
+            <artifactId>comum</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>br.edu.ifba.saj.worker.WorkerNode</mainClass>
+                    <arguments>
+                        <!--suppress UnresolvedMavenProperty -->
+                        <argument>${worker.port}</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>worker1</id>
+            <properties>
+                <worker.port>50051</worker.port>
+            </properties>
+        </profile>
+        <profile>
+            <id>worker2</id>
+            <properties>
+                <worker.port>50052</worker.port>
+            </properties>
+        </profile>
+        <profile>
+            <id>worker3</id>
+            <properties>
+                <worker.port>50053</worker.port>
+            </properties>
+        </profile>
+    </profiles>
+
+</project>

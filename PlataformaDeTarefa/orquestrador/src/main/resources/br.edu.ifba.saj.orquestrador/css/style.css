@@ -1,0 +1,425 @@
+/* Orquestrador Dashboard Styles - Responsive */
+.root {
+    -fx-font-family: 'Segoe UI', 'Arial', sans-serif;
+    -fx-background-color: #ecf0f1;
+}
+
+/* Header Styles */
+.header {
+    -fx-background-color: linear-gradient(to bottom, #1a252f, #2c3e50);
+    -fx-padding: 15;
+    -fx-spacing: 8;
+}
+
+.header .label {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+/* TextArea (Log) Styles - RESPONSIVO E COM VISUAL DIGITAL */
+.text-area {
+    -fx-background-color: #1a252f; /* Fundo mais escuro */
+    -fx-text-fill: #00ff00; /* Texto verde neon */
+    -fx-font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    -fx-font-size: 12px;
+    -fx-border-color: #34495e;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-effect: innershadow(gaussian, rgba(0, 255, 0, 0.1), 5, 0.0, 0, 1); /* Efeito de brilho sutil */
+}
+
+.text-area .content {
+    -fx-background-color: #1a252f;
+}
+
+.text-area .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.text-area .scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+/* Estilo da ListView de Log */
+.log-list-view {
+    -fx-background-color: #ecf0f1; /* Cor de fundo da área de log */
+    -fx-padding: 5;
+}
+
+.log-list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 3px 0;
+}
+
+/* Base para todos os cards de log */
+.log-card-info, .log-card-success, .log-card-error, .log-card-task-submitted, .log-card-task-distributed, .log-card-failover {
+    -fx-background-color: white;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-border-width: 0 0 0 5; /* Borda colorida à esquerda */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 3, 0.0, 0, 1);
+}
+
+/* Cores específicas por tipo de evento - MAIS VARIADAS */
+.log-card-info { -fx-border-color: #3498db; } /* Azul (Info) */
+.log-card-success { -fx-border-color: #27ae60; } /* Verde (Sucesso, Concluído, Novo Worker) */
+.log-card-error { -fx-border-color: #c0392b; } /* Vermelho (Erro, Falha) */
+.log-card-task-submitted { -fx-border-color: #f39c12; } /* Laranja (Nova Tarefa no Orquestrador) */
+.log-card-task-distributed { -fx-border-color: #8e44ad; } /* Roxo (Tarefa Distribuída para Worker) */
+.log-card-failover { -fx-border-color: #d35400; } /* Laranja Escuro (Failover) */
+.log-card-warning { -fx-border-color: #f1c40f; } /* Amarelo (Avisos, Worker Inativo, Reagendamento) */
+.log-card-health-check { -fx-border-color: #7f8c8d; } /* Cinza (Health Check no log) */
+.log-card-notification { -fx-border-color: #1abc9c; } /* Turquesa (Notificações) */
+.log-card-client-event { -fx-border-color: #2980b9; } /* Azul escuro (Eventos de Cliente) */
+.log-card-task-sent { -fx-border-color: #20b2aa; } /* Verde-azulado (Tarefa Enviada com Sucesso) */
+.log-card-task-completed { -fx-border-color: #a742b6; } /* Lilás (Tarefa Concluída no Worker) */
+
+
+/* Estilos para o indicador de Health Check */
+.health-check-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #e74c3c; /* Vermelho para o texto */
+    -fx-font-weight: bold;
+}
+
+/* Novo estilo para o texto da barra de sincronização */
+.sync-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #7f8c8d;
+    -fx-font-style: italic;
+}
+
+/* Para eventos de worker inativo ou reagendamento */
+.log-card-warning { -fx-border-color: #f1c40f; } /* Amarelo (Avisos) */
+
+/* Estilos do texto dentro do card */
+.log-icon {
+    -fx-font-size: 18px;
+    -fx-padding: 8 0 0 0;
+}
+
+.log-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-fill: #2c3e50;
+}
+
+.log-message {
+    -fx-font-size: 11px;
+    -fx-fill: #7f8c8d;
+}
+
+.log-timestamp {
+    -fx-font-size: 10px;
+    -fx-fill: #bdc3c7;
+}
+
+/* Status Cards - Responsive */
+.status-card {
+    -fx-background-color: #2c3e50;
+    -fx-padding: 12;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 3, 0.0, 0, 1);
+    -fx-min-width: 120;
+}
+
+.status-ativo {
+    -fx-text-fill: #27ae60;
+    -fx-font-weight: bold;
+}
+
+.status-inativo {
+    -fx-text-fill: #e74c3c;
+    -fx-font-weight: bold;
+}
+
+/* Estilo para a nova barra de progresso de sincronização */
+.sync-progress-bar {
+    -fx-accent: #00ff00; /* Cor verde neon, combinando com o log */
+    -fx-control-inner-background: transparent;
+    -fx-min-height: 3;
+    -fx-max-height: 3;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+    -fx-opacity: 0; /* Começa invisível */
+}
+
+.sync-progress-bar .bar {
+    -fx-background-color: -fx-accent;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+}
+
+.sync-progress-bar .track {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+}
+
+/* Buttons - Responsive */
+.button {
+    -fx-font-weight: bold;
+    -fx-padding: 6 12;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 2, 0.0, 0, 1);
+    -fx-min-width: 80;
+}
+
+.button:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 3, 0.0, 0, 2);
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.button:pressed {
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.2), 2, 0.0, 0, 1);
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* Section Titles */
+.section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+    -fx-padding: 3 0 3 0;
+}
+
+/* Table Styles - Responsive */
+.table-view {
+    -fx-border-color: #bdc3c7;
+    -fx-border-radius: 4;
+    -fx-background-color: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 2, 0.0, 0, 1);
+}
+
+.table-view .column-header-background {
+    -fx-background-color: linear-gradient(to bottom, #34495e, #2c3e50);
+    -fx-border-color: transparent;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+
+.table-row-cell {
+    -fx-border-color: transparent;
+    -fx-border-width: 0.5;
+    -fx-cell-size: 25; /* Altura das células mais compacta */
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #f8f9fa;
+}
+
+.table-row-cell:even {
+    -fx-background-color: white;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+}
+
+.table-row-cell:selected .text {
+    -fx-fill: white;
+}
+
+.table-cell {
+    -fx-padding: 4 3 4 3; /* Padding mais compacto */
+    -fx-alignment: CENTER_LEFT;
+    -fx-font-size: 11px;
+}
+
+/* Wrap text in table cells */
+.table-cell .text {
+    -fx-wrapping-width: 200;
+    -fx-text-overrun: ELLIPSIS;
+}
+
+/* Chart Styles - Responsive */
+.chart {
+    -fx-background-color: white;
+    -fx-border-color: #bdc3c7;
+    -fx-border-radius: 4;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 2, 0.0, 0, 1);
+}
+
+.chart-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.chart-pie-label {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.chart-legend {
+    -fx-font-size: 10px;
+}
+
+/* TextArea (Log) Styles - Responsive */
+.text-area {
+    -fx-background-color: #2c3e50;
+    -fx-text-fill: #2ecc71;
+    -fx-font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    -fx-font-size: 11px;
+    -fx-border-color: #34495e;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.15), 2, 0.0, 0, 1);
+}
+
+.text-area .content {
+    -fx-background-color: #2c3e50;
+}
+
+.text-area .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.text-area .scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+/* ScrollBar Styles - Responsive */
+.scroll-bar {
+    -fx-background-color: #34495e;
+}
+
+.scroll-bar:horizontal .track,
+.scroll-bar:vertical .track {
+    -fx-background-color: #2c3e50;
+    -fx-border-color: transparent;
+    -fx-background-radius: 3;
+}
+
+.scroll-bar:horizontal .thumb,
+.scroll-bar:vertical .thumb {
+    -fx-background-color: #7f8c8d;
+    -fx-background-radius: 3;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #95a5a6;
+}
+
+.scroll-bar .thumb:pressed {
+    -fx-background-color: #bdc3c7;
+}
+
+/* Split Pane - Responsive */
+.split-pane {
+    -fx-background-color: #ecf0f1;
+}
+
+.split-pane .split-pane-divider {
+    -fx-background-color: #bdc3c7;
+    -fx-padding: 0 1 0 1;
+}
+
+/* ScrollPane */
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+/* Status-specific colors for table cells */
+.status-aguardando {
+    -fx-background-color: #f39c12;
+    -fx-text-fill: white;
+    -fx-background-radius: 2;
+    -fx-padding: 1 3;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.status-executando {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+    -fx-background-radius: 2;
+    -fx-padding: 1 3;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.status-concluida {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-background-radius: 2;
+    -fx-padding: 1 3;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.status-falha {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-background-radius: 2;
+    -fx-padding: 1 3;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.status-ativo-worker {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-background-radius: 2;
+    -fx-padding: 1 3;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.status-inativo-worker {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-background-radius: 2;
+    -fx-padding: 1 3;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 1200px) {
+    .header .label {
+        -fx-font-size: 20px;
+    }
+
+    .section-title {
+        -fx-font-size: 14px;
+    }
+
+    .button {
+        -fx-padding: 5 10;
+        -fx-min-width: 70;
+    }
+}
+
+@media (max-width: 1000px) {
+    .header .label {
+        -fx-font-size: 18px;
+    }
+
+    .section-title {
+        -fx-font-size: 13px;
+    }
+
+    .table-cell {
+        -fx-font-size: 10px;
+        -fx-padding: 3 2 3 2;
+    }
+}
